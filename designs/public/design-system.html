@@ -1,0 +1,1309 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AuctionHub | Design System v2: màu sắc và chuyển động</title>
+    <meta
+      name="description"
+      content="Lớp màu và chuyển động bổ sung trên nền Stripe của AuctionHub: gradient, bảng màu ngữ nghĩa, tint bề mặt, token chuyển động và luật sử dụng."
+    />
+
+    <style>
+      /* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio.
+         Put this @layer first; product CSS outside the layer always wins. */
+      @layer od-layout {
+        :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+
+        /* containers */
+        .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+        .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+        .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+        .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+        .od-fill    { flex: 1 1 0; min-width: 0; }
+        .od-fixed   { flex: none; }
+        .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+
+        /* stacked information: each piece is its own line — never sibling inline spans */
+        .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+        :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+        .od-tile { display: grid; grid-template-rows: auto 1fr; }
+        :where(.od-tile) > :where(*) { display: block; }
+
+        /* media keeps its intrinsic ratio by default; never a distorted or cropped
+           cover by accident. height:auto lets the ratio win over an <img height="…">
+           attribute. Cropping to a uniform box is an explicit opt-in: set --od-ratio
+           AND add .od-media-cover together (per the core rule, only where a crop is
+           deliberate — tile thumbs, decorative fills — never on full-frame content). */
+        .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+        .od-media-cover { object-fit: cover; }
+
+        /* data text only — authored copy is rewritten to its budget instead */
+        .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+        .od-clamp-2 { -webkit-line-clamp: 2; }
+        .od-clamp-3 { -webkit-line-clamp: 3; }
+        .od-lines-2 { min-height: calc(2 * 1.4em); }   /* block-level reservation for a shared baseline */
+        .od-nowrap  { white-space: nowrap; }           /* 数字+单位 · 价格+起 · 日期+星期 */
+        .od-keep    { word-break: keep-all; overflow-wrap: anywhere; } /* CJK labels break at spaces / <wbr> first */
+
+        /* screen skeleton (optional): bars take their own space, the middle scrolls — no padding guessed for chrome */
+        .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+        .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+
+        /* horizontal rail: the next item peeks at the edge; trailing room survives overflow */
+        .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+                   padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+        .od-rail::-webkit-scrollbar { display: none; }
+        :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+        :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+
+        .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+        .od-touch  { min-width: 44px; min-height: 44px; }
+      }
+      /* /OD-LAYOUT-PRIMITIVES v1 */
+
+      /* ─── Design tokens v1 (Stripe foundation) ────────────────
+         Same shared schema as the app pages, resolved per the
+         AuctionHub brief. Tokens referenced only through var(--name). */
+      :root {
+        --bg:           #ffffff;
+        --surface:      #ffffff;
+        --surface-warm: #fafafa;
+
+        --fg:    #1a1a1a;
+        --fg-2:  #374151;
+        --muted: #6b7280;
+        --meta:  var(--muted);
+
+        --border:      #e5e7eb;
+        --border-soft: var(--border);
+
+        --accent:    #635bff;
+        --accent-on: #ffffff;
+
+        --accent-hover:  #5851df;
+        --accent-active: #4f46d6;
+
+        --success:      #15be53;
+        --success-text: #0b7a44;
+        --success-bg:   #eaf7f1;
+        --warn:         #9b6829;
+        --danger:       #ea2261;
+        --danger-text:  #b4233e;
+        --danger-bg:    #fbeeef;
+
+        --on-dark:        #ffffff;
+        --on-dark-muted:  rgba(255, 255, 255, 0.72);
+        --dark-bg:        #1a1a1a;
+        --dark-bg-2:      #111113;
+        --dark-border:    rgba(255, 255, 255, 0.10);
+
+        --font-display:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-body:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-mono:
+          "SourceCodePro", "Source Code Pro",
+          ui-monospace, "SF Mono", "JetBrains Mono",
+          Menlo, Monaco, Consolas, monospace;
+
+        --text-xs:   12px;
+        --text-sm:   14px;
+        --text-base: 17px;
+        --text-lg:   19px;
+        --text-xl:   24px;
+        --text-2xl:  32px;
+        --text-3xl:  46px;
+        --text-4xl:  64px;
+
+        --leading-body:     1.55;
+        --leading-tight:    1.1;
+        --tracking-display: -0.02em;
+
+        --space-1:  4px;
+        --space-2:  8px;
+        --space-3:  12px;
+        --space-4:  16px;
+        --space-5:  20px;
+        --space-6:  24px;
+        --space-8:  32px;
+        --space-12: 48px;
+
+        --section-y-desktop: 112px;
+        --section-y-tablet:  72px;
+        --section-y-phone:   48px;
+
+        --radius-sm: 4px;
+        --radius-md: 6px;
+        --radius-lg: 8px;
+
+        --elev-flat:   none;
+        --elev-ring:   0 0 0 1px var(--border);
+        --elev-soft:
+          rgba(50, 50, 93, 0.06) 0px 6px 18px -6px,
+          rgba(0,   0,  0, 0.06) 0px 3px 8px  -4px;
+        --elev-raised:
+          rgba(50, 50, 93, 0.16) 0px 24px 40px -28px,
+          rgba(0,   0,  0, 0.10) 0px 16px 32px -18px;
+
+        --motion-fast:   150ms;
+        --motion-base:   200ms;
+        --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+        --container-max:            1080px;
+        --container-gutter-desktop: 32px;
+        --container-gutter-tablet:  24px;
+        --container-gutter-phone:   20px;
+
+        /* ─── v2: accent gradients ──────────────────────────────── */
+        --gradient-primary: linear-gradient(135deg, #635bff 0%, #8b5cf6 100%);
+        --gradient-warm:    linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+        --gradient-cool:    linear-gradient(135deg, #06b6d4 0%, #635bff 100%);
+
+        /* ─── v2: semantic colors (base + bg 10% + border 30% + text dark) ─── */
+        --color-live:    #15be53;
+        --color-live-bg:      color-mix(in oklab, #15be53 10%, transparent);
+        --color-live-border:  color-mix(in oklab, #15be53 30%, transparent);
+        --color-live-text:    #0b7a44;
+
+        --color-hot:    #ff6b35;
+        --color-hot-bg:      color-mix(in oklab, #ff6b35 10%, transparent);
+        --color-hot-border:  color-mix(in oklab, #ff6b35 30%, transparent);
+        --color-hot-text:    #b53f15;
+
+        --color-ending:    #f59e0b;
+        --color-ending-bg:      color-mix(in oklab, #f59e0b 10%, transparent);
+        --color-ending-border:  color-mix(in oklab, #f59e0b 30%, transparent);
+        --color-ending-text:    #9a6803;
+
+        --color-new:    #8b5cf6;
+        --color-new-bg:      color-mix(in oklab, #8b5cf6 10%, transparent);
+        --color-new-border:  color-mix(in oklab, #8b5cf6 30%, transparent);
+        --color-new-text:    #5b2fd1;
+
+        --color-premium:    #d4af37;
+        --color-premium-bg:      color-mix(in oklab, #d4af37 10%, transparent);
+        --color-premium-border:  color-mix(in oklab, #d4af37 30%, transparent);
+        --color-premium-text:    #8a6d1a;
+
+        /* ─── v2: surface tints ─────────────────────────────────── */
+        --surface-lavender: #f5f3ff;
+        --surface-mint:     #ecfdf5;
+        --surface-peach:    #fff7ed;
+        --surface-sky:      #f0f9ff;
+
+        /* ─── v2: motion tokens ─────────────────────────────────── */
+        --motion-hover:  180ms cubic-bezier(0.4, 0, 0.2, 1);
+        --motion-enter:  260ms cubic-bezier(0.16, 1, 0.3, 1);
+        --motion-bounce: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+
+      /* ─── Base ─────────────────────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; }
+      html { scroll-behavior: smooth; scroll-padding-top: 96px; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--font-body);
+        font-size: var(--text-base);
+        line-height: var(--leading-body);
+        font-weight: 400;
+        font-feature-settings: "ss01";
+        -webkit-font-smoothing: antialiased;
+      }
+      strong { font-weight: 600; }
+      img { max-width: 100%; }
+
+      .tnum { font-feature-settings: "tnum", "ss01"; }
+
+      .container {
+        max-width: var(--container-max);
+        margin-inline: auto;
+        padding-inline: var(--container-gutter-desktop);
+      }
+
+      h1, h2, h3 {
+        font-family: var(--font-display);
+        font-weight: 300;
+        line-height: var(--leading-tight);
+        letter-spacing: var(--tracking-display);
+        color: var(--fg);
+        margin: 0;
+      }
+      h1 { font-size: clamp(42px, 5vw, 68px); line-height: 1.06; letter-spacing: -0.03em; }
+      h2 { font-size: clamp(30px, 4vw, 44px); margin-block-end: var(--space-4); }
+      h3 { font-size: var(--text-xl); letter-spacing: -0.01em; margin-block-end: var(--space-2); }
+      p { margin: 0; }
+      code {
+        font-family: var(--font-mono);
+        font-size: var(--text-sm);
+        background: var(--surface-warm);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 2px 6px;
+      }
+
+      .eyebrow {
+        display: inline-block;
+        font-size: var(--text-xs);
+        font-weight: 500;
+        line-height: 1;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.09em;
+      }
+      .lede { font-size: var(--text-lg); color: var(--muted); max-width: 58ch; }
+
+      .section-head { max-width: 46ch; margin-block-end: var(--space-6); }
+      .section-note { color: var(--muted); font-size: var(--text-sm); margin-block-start: var(--space-6); }
+
+      a { color: var(--fg); text-decoration: none; }
+      a:hover { color: var(--fg-2); }
+
+      /* ─── v2 demo: sticky header (the one allowed glass) ─────── */
+      .ds-header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: color-mix(in oklab, var(--bg) 82%, transparent);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border);
+      }
+      .ds-header-in {
+        display: flex;
+        align-items: center;
+        gap: var(--space-6);
+        padding-block: var(--space-3);
+      }
+      .ds-brand {
+        font-family: var(--font-display);
+        font-weight: 600;
+        color: var(--fg);
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+      }
+      .ds-brand svg { color: var(--accent); }
+
+      .ds-nav {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        margin-left: auto;
+      }
+      .ds-nav .nav-link { padding-block: var(--space-2); }
+      .ds-nav .nav-link.is-active { color: var(--accent); }
+
+      /* ─── v2: interaction rules ──────────────────────────────── */
+      /* 4. nav underline slides from left (never fades in) */
+      .nav-link {
+        position: relative;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--fg-2);
+        display: inline-flex;
+        align-items: center;
+        min-height: 40px;
+      }
+      .nav-link::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 2px;
+        height: 2px;
+        background: var(--accent);
+        transform: scaleX(0);
+        transform-origin: left center;
+        transition: transform var(--motion-hover);
+      }
+      .nav-link:hover { color: var(--fg); }
+      .nav-link:hover::after { transform: scaleX(1); }
+
+      /* 8. focus ring: transparent to accent in 150ms, no snap */
+      .focusable {
+        outline: none;
+        box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 0%, transparent);
+        transition:
+          box-shadow 150ms var(--ease-standard),
+          border-color 150ms var(--ease-standard);
+      }
+      .focusable:focus-visible {
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 30%, transparent);
+        border-color: var(--accent);
+      }
+
+      /* 2. primary buttons: gradient on hover, press scales to 0.98 */
+      .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        padding: 10px 20px;
+        min-height: 44px;
+        border-radius: var(--radius-sm);
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: var(--text-base);
+        line-height: 1;
+        color: var(--accent-on);
+        background-color: var(--accent);
+        background-image: none;
+        border: 1px solid transparent;
+        cursor: pointer;
+        text-decoration: none;
+        transition:
+          background-image var(--motion-hover),
+          background-color var(--motion-hover),
+          transform var(--motion-hover),
+          box-shadow var(--motion-hover);
+      }
+      .btn-primary:hover { background-image: var(--gradient-primary); }
+      .btn-primary:active {
+        transform: scale(0.98);
+        background-color: var(--accent-active);
+        background-image: none;
+      }
+      .btn-primary:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 40%, transparent);
+      }
+
+      /* 3. cards: lift 2px, softer shadow, border tints 20% accent; content never moves */
+      .demo-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: var(--space-5);
+        transition:
+          transform var(--motion-hover),
+          box-shadow var(--motion-hover),
+          border-color var(--motion-hover);
+      }
+      .demo-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--elev-soft);
+        border-color: color-mix(in oklab, var(--accent) 20%, var(--border));
+      }
+      .demo-card h3 { margin-block-end: 0; }
+      .demo-card .desc { color: var(--muted); font-size: var(--text-sm); }
+
+      /* 7. images zoom 1.02 + brightness 1.05, overflow hidden */
+      .zoom-media { overflow: hidden; border-radius: var(--radius-lg); }
+      .zoom-media img {
+        display: block;
+        width: 100%;
+        transition: transform var(--motion-enter), filter var(--motion-enter);
+      }
+      .zoom-media:hover img { transform: scale(1.02); filter: brightness(1.05); }
+
+      /* 9. page transition: fade + 8px rise in 260ms */
+      .rise-in { animation: rise-in var(--motion-enter) both; }
+      @keyframes rise-in {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      .status-row { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-block: var(--space-5); }
+      .status-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        font-size: var(--text-sm);
+        font-weight: 500;
+      }
+      .status-chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+      .chip-live    { color: var(--color-live-text);    background: var(--color-live-bg);    border-color: var(--color-live-border); }
+      .chip-hot     { color: var(--color-hot-text);     background: var(--color-hot-bg);     border-color: var(--color-hot-border); }
+      .chip-ending  { color: var(--color-ending-text);  background: var(--color-ending-bg);  border-color: var(--color-ending-border); }
+      .chip-new     { color: var(--color-new-text);     background: var(--color-new-bg);     border-color: var(--color-new-border); }
+      .chip-premium { color: var(--color-premium-text); background: var(--color-premium-bg); border-color: var(--color-premium-border); }
+
+      /* ─── Gradient section ────────────────────────────────────── */
+      .grad-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: var(--space-4);
+        margin-block-start: var(--space-2);
+      }
+      .grad-card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: var(--space-4);
+        background: var(--surface);
+      }
+      .grad-swatch {
+        height: 64px;
+        border-radius: var(--radius-md);
+        margin-block-end: var(--space-3);
+      }
+      .grad-swatch.primary { background-image: var(--gradient-primary); }
+      .grad-swatch.warm    { background-image: var(--gradient-warm); }
+      .grad-swatch.cool    { background-image: var(--gradient-cool); }
+      .grad-card code { display: inline-block; margin-block-start: var(--space-2); }
+      .grad-card .use { color: var(--muted); font-size: var(--text-sm); margin-block-start: var(--space-2); }
+      .grad-rule {
+        margin-block-start: var(--space-6);
+        padding: var(--space-4);
+        border-left: 3px solid var(--accent);
+        background: var(--surface-warm);
+        border-radius: 0 var(--radius-md) var(--radius-md) 0;
+        color: var(--fg-2);
+        font-size: var(--text-sm);
+      }
+
+      /* ─── Semantic color section ──────────────────────────────── */
+      .sem-table { width: 100%; border-collapse: collapse; margin-block-start: var(--space-2); }
+      .sem-table th, .sem-table td { text-align: left; padding: var(--space-3); border-bottom: 1px solid var(--border); }
+      .sem-table th { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 500; }
+      .sem-table td { vertical-align: middle; font-size: var(--text-sm); }
+      .swatch-stack { display: flex; flex-direction: column; gap: var(--space-1); }
+      .swatch-row { display: flex; align-items: center; gap: 8px; font-size: var(--text-xs); color: var(--muted); }
+      .swatch { width: 28px; height: 28px; border-radius: var(--radius-sm); flex: none; }
+      .swatch.bordered { border: 1px solid var(--border); }
+
+      /* ─── Surface tint KPI cards ──────────────────────────────── */
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--space-4);
+        margin-block-start: var(--space-2);
+      }
+      .kpi-card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: var(--space-5);
+        transition: box-shadow var(--motion-hover), border-color var(--motion-hover);
+      }
+      .kpi-card:hover { box-shadow: var(--elev-soft); border-color: color-mix(in oklab, var(--accent) 20%, var(--border)); }
+      .kpi-card .kpi-label { font-size: var(--text-sm); color: var(--muted); }
+      .kpi-card .kpi-value { font-size: var(--text-2xl); font-family: var(--font-display); font-weight: 600; margin-block-start: var(--space-2); font-feature-settings: "tnum", "ss01"; }
+
+      .kpi-lavender { background: var(--surface-lavender); }
+      .kpi-mint     { background: var(--surface-mint); }
+      .kpi-peach    { background: var(--surface-peach); }
+      .kpi-sky      { background: var(--surface-sky); }
+
+      /* ─── Interaction demos ───────────────────────────────────── */
+      .demo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: var(--space-6);
+        margin-block-start: var(--space-4);
+      }
+      .demo-item .demo-label { font-size: var(--text-sm); color: var(--muted); margin-block-end: var(--space-2); }
+      .demo-item .demo-label strong { color: var(--fg); display: block; font-size: var(--text-base); margin-block-end: 2px; }
+
+      /* 3. table rows: 2% accent tint, action links 0.6 to 1.0 */
+      .table-demo { width: 100%; border-collapse: collapse; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+      .table-demo th, .table-demo td { padding: 10px 12px; text-align: left; font-size: var(--text-sm); }
+      .table-demo thead th { background: var(--surface-warm); font-weight: 500; color: var(--muted); }
+      .table-demo tbody tr { transition: background-color var(--motion-hover); }
+      .table-demo tbody tr:hover { background-color: color-mix(in oklab, var(--accent) 2%, transparent); }
+      .table-action { opacity: 0.6; color: var(--accent); transition: opacity var(--motion-hover); }
+      .table-demo tbody tr:hover .table-action { opacity: 1; }
+      .table-demo td code { border: none; background: none; padding: 0; }
+
+      /* 2. pill tabs: active uses a gradient indicator */
+      .pill-group { display: inline-flex; gap: 2px; padding: 3px; background: var(--surface-warm); border: 1px solid var(--border); border-radius: 999px; }
+      .pill-tab {
+        padding: 6px 14px;
+        border-radius: 999px;
+        border: none;
+        background: transparent;
+        color: var(--fg-2);
+        font-family: var(--font-display);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color var(--motion-hover), color var(--motion-hover);
+      }
+      .pill-tab:hover { background: var(--bg); }
+      .pill-tab.is-active { background-image: var(--gradient-primary); color: var(--accent-on); }
+
+      /* 6. countdown < 5 min: pulsing ring in hot */
+      .countdown-hot {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-2);
+        padding: 8px 14px;
+        border: 1px solid var(--color-hot-border);
+        border-radius: 999px;
+        color: var(--color-hot-text);
+        font-feature-settings: "tnum", "ss01";
+        font-weight: 600;
+      }
+      .countdown-hot::before {
+        content: "";
+        position: absolute;
+        inset: -5px;
+        border-radius: 999px;
+        border: 2px solid var(--color-hot);
+        animation: ring-pulse 1.8s var(--ease-standard) infinite;
+      }
+      @keyframes ring-pulse {
+        0%   { transform: scale(1);    opacity: 0.8; }
+        100% { transform: scale(1.12); opacity: 0; }
+      }
+
+      /* 5. notification dots ping: 1.8s ease-in-out, scale 1 to 1.4 to 1 */
+      .notif-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--color-hot);
+        flex: none;
+        animation: ping 1.8s ease-in-out infinite;
+      }
+      @keyframes ping {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50%      { transform: scale(1.4); opacity: 0.55; }
+      }
+      .notif-row { display: flex; align-items: center; gap: var(--space-2); padding-block: 8px; border-bottom: 1px solid var(--border); font-size: var(--text-sm); }
+
+      /* 10. bid counter: 60ms per digit + success flash fades 800ms */
+      .bid-box { display: flex; flex-direction: column; gap: var(--space-3); }
+      .bid-box .bid-value {
+        font-size: var(--text-2xl);
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-feature-settings: "tnum", "ss01";
+        min-height: 1.2em;
+        border-radius: var(--radius-md);
+        padding: 4px 8px;
+        margin-left: -8px;
+        transition: background-color 120ms var(--ease-standard);
+      }
+      .bid-box .bid-value.is-flash { background-color: var(--success-bg); }
+      .bid-box .btn-bid {
+        align-self: flex-start;
+        padding: 10px 18px;
+        min-height: 44px;
+        border-radius: var(--radius-sm);
+        border: none;
+        background: var(--accent);
+        color: var(--accent-on);
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: var(--text-base);
+        cursor: pointer;
+        transition: background-color var(--motion-hover), transform var(--motion-hover);
+      }
+      .bid-box .btn-bid:hover { background-color: var(--accent-hover); }
+      .bid-box .btn-bid:active { transform: scale(0.97); }
+
+      /* ─── Before / after card ─────────────────────────────────── */
+      .combo-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: var(--space-6);
+        margin-block-start: var(--space-4);
+      }
+      .combo-col .combo-label {
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--muted);
+        margin-block-end: var(--space-4);
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+      }
+      .combo-col .combo-label .tag { font-size: var(--text-xs); color: var(--accent); border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; }
+
+      .mini-auction {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        transition: transform var(--motion-hover), box-shadow var(--motion-hover), border-color var(--motion-hover);
+      }
+      .mini-auction:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--elev-soft);
+        border-color: color-mix(in oklab, var(--accent) 20%, var(--border));
+      }
+      .mini-auction .ma-img { overflow: hidden; }
+      .mini-auction .ma-img img {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        transition: transform var(--motion-enter), filter var(--motion-enter);
+      }
+      .mini-auction:hover .ma-img img { transform: scale(1.02); filter: brightness(1.05); }
+      .mini-auction .ma-body { padding: var(--space-4); }
+      .mini-auction .ma-status { font-size: var(--text-sm); font-weight: 500; margin-block-end: var(--space-2); }
+      .mini-auction .ma-title { font-size: var(--text-base); font-family: var(--font-display); font-weight: 600; line-height: 1.25; }
+      .mini-auction .ma-price-label { font-size: var(--text-xs); color: var(--muted); margin-block-start: var(--space-3); }
+      .mini-auction .ma-price { font-size: var(--text-xl); font-weight: 600; font-feature-settings: "tnum", "ss01"; margin-block-start: 2px; }
+      .mini-auction .ma-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-block-start: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+
+      .ma-status.mono { color: var(--muted); }
+      .ma-status.v2-live  { color: var(--color-live-text); }
+      .ma-status.v2-hot   { color: var(--color-hot-text); }
+      .ma-status.v2-ending { color: var(--color-ending-text); }
+
+      .ma-cta {
+        padding: 8px 16px;
+        min-height: 40px;
+        border-radius: var(--radius-sm);
+        border: none;
+        background: var(--accent);
+        color: var(--accent-on);
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: var(--text-sm);
+        cursor: pointer;
+        transition: background-color var(--motion-hover), transform var(--motion-hover);
+      }
+      .ma-cta:hover { background-color: var(--accent-hover); }
+      .ma-cta:active { transform: scale(0.98); }
+
+      .timer-line { font-feature-settings: "tnum", "ss01"; font-size: var(--text-sm); color: var(--muted); }
+      .timer-line.v2-ending { color: var(--color-ending-text); font-weight: 600; }
+
+      /* ─── Sections / footer ───────────────────────────────────── */
+      section { padding-block: var(--section-y-desktop); border-top: 1px solid var(--border); }
+      .hero { border-top: none; padding-block-end: var(--space-12); }
+      .hero .hero-copy { max-width: 640px; }
+      .hero .hero-actions { display: flex; align-items: center; gap: var(--space-6); margin-block-start: var(--space-6); flex-wrap: wrap; }
+      .hero .hero-note { color: var(--muted); font-size: var(--text-sm); }
+
+      footer { padding-block: var(--space-8); color: var(--muted); font-size: var(--text-sm); border-top: 1px solid var(--border); }
+      footer a { color: var(--accent); }
+
+      /* h1 gradient head is one of the three applied gradient roles */
+      .headline-accent {
+        background-image: var(--gradient-primary);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      /* ─── Reduced motion: keep color transitions only ────────── */
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001ms !important;
+        }
+        html { scroll-behavior: auto; }
+        .countdown-hot::before { transform: scale(1); opacity: 0.6; }
+        .notif-dot { transform: none; }
+      }
+    </style>
+  
+
+    <!-- OD MICRO-INTERACTIONS START -->
+    <style data-micro-interactions="css">
+      /* Cross-page micro-interactions: focus ring, link slide underline,
+         button press, lazy image fade, dialog rise, scroll progress. */
+
+      :focus-visible {
+        outline: 2px solid var(--accent, #635bff);
+        outline-offset: 4px;
+        transition: outline-color 120ms ease;
+      }
+
+      /* Unify link underline into one animated system. !important suppresses
+         per-page text-decoration so only the slide underline renders; the
+         element-level background-image only affects painting, never layout. */
+      a {
+        text-decoration: none !important;
+        background-image: linear-gradient(currentColor, currentColor);
+        background-repeat: no-repeat;
+        background-position: 0 100%;
+        background-size: 0 1px;
+        background-origin: border-box;
+        transition:
+          background-size 150ms cubic-bezier(0.2, 0, 0, 1),
+          color 150ms ease,
+          background-color 150ms ease,
+          border-color 150ms ease,
+          opacity 150ms ease,
+          transform 150ms ease;
+      }
+      a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover {
+        background-size: 100% 1px;
+      }
+
+      button:not(.pwd-toggle):active,
+      .btn:active,
+      [role="button"]:active {
+        transform: scale(0.98);
+      }
+
+      @keyframes micro-rise {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      [role="dialog"] > *,
+      .drawer-inner > *,
+      .drawer-panel > * {
+        animation: micro-rise 260ms cubic-bezier(0.2, 0, 0, 1) both;
+      }
+      [role="dialog"] > * + *,
+      .drawer-inner > * + *,
+      .drawer-panel > * + * {
+        animation-delay: 50ms;
+      }
+
+      img[loading="lazy"] {
+        opacity: 0.8;
+        transition: opacity 260ms ease;
+      }
+      img[loading="lazy"].micro-loaded { opacity: 1; }
+
+      #scroll-progress {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%;
+        height: 2px;
+        transform: scaleX(var(--micro-prog, 0));
+        transform-origin: left center;
+        background: var(--accent, #635bff);
+        z-index: 1000;
+        pointer-events: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        a { background-image: none; }
+        a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover { background-size: 0 1px; }
+        button:not(.pwd-toggle):active,
+        .btn:active,
+        [role="button"]:active { transform: none; }
+        [role="dialog"] > *,
+        .drawer-inner > *,
+        .drawer-panel > * { animation: none; }
+        img[loading="lazy"] { opacity: 1; transition: none; }
+        #scroll-progress { transform: none; }
+      }
+    </style>
+    <!-- /OD MICRO-INTERACTIONS -->
+
+  </head>
+  <body>
+    <header class="ds-header">
+      <div class="container ds-header-in">
+        <a class="ds-brand focusable" href="index.html" aria-label="Về trang chủ AuctionHub">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3" />
+          </svg>
+          AuctionHub
+        </a>
+        <nav class="ds-nav" aria-label="Điều hướng trang design system">
+          <a class="nav-link focusable is-active" href="#gradients">Gradient</a>
+          <a class="nav-link focusable" href="#semantic">Màu ngữ nghĩa</a>
+          <a class="nav-link focusable" href="#surfaces">Bề mặt</a>
+          <a class="nav-link focusable" href="#interactions">Chuyển động</a>
+          <a class="nav-link focusable" href="#beforeafter">Trước / Sau</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <!-- ═══ HERO ═══ -->
+      <section class="hero">
+        <div class="container">
+          <div class="hero-copy rise-in">
+            <p class="eyebrow">AuctionHub · DESIGN SYSTEM v2</p>
+            <h1 style="margin-block-end: 20px; margin-top: 12px">
+              Màu sắc và chuyển động<br />
+              trên nền <span class="headline-accent">Stripe</span>
+            </h1>
+            <p class="lede">
+              Lớp bổ sung cho design system hiện tại: ba gradient, năm màu ngữ nghĩa,
+              bốn tint bề mặt và ba token chuyển động. Giữ tối giản, chuyển động giải thích
+              trạng thái thay vì trang trí.
+            </p>
+            <div class="hero-actions">
+              <a class="btn-primary focusable" href="#gradients">Xem tokens</a>
+              <a class="hero-note" href="#beforeafter">So sánh trước / sau một phiên đấu giá →</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ GRADIENTS ═══ -->
+      <section id="gradients">
+        <div class="container">
+          <div class="section-head rise-in">
+            <p class="eyebrow">01 · COLOR</p>
+            <h2>Gradient</h2>
+            <p class="lede">
+              Ba gradient, dùng đúng chỗ và tiết chế. Tối đa 3 vị trí gradient trên một trang;
+              không bao giờ làm nền cả section.
+            </p>
+          </div>
+
+          <div class="grad-grid rise-in">
+            <article class="demo-card grad-card">
+              <div class="grad-swatch primary" aria-hidden="true"></div>
+              <code>--gradient-primary</code>
+              <p class="use">Viền trạng thái "đang diễn ra", headline nhấn, tab đang chọn, hover nút chính.</p>
+            </article>
+            <article class="demo-card grad-card">
+              <div class="grad-swatch warm" aria-hidden="true"></div>
+              <code>--gradient-warm</code>
+              <p class="use">Badge vật phẩm "hot", countdown dưới 5 phút, cảnh báo quan trọng.</p>
+            </article>
+            <article class="demo-card grad-card">
+              <div class="grad-swatch cool" aria-hidden="true"></div>
+              <code>--gradient-cool</code>
+              <p class="use">Trạng thái tích cực lạnh: import dữ liệu, lịch biểu, onboarding.</p>
+            </article>
+          </div>
+
+          <div class="grad-rule rise-in">
+            <strong>Three rules:</strong> gradient chỉ xuất hiện trên headline hero (mức nhẹ),
+            hover của nút chính, indicator tab đang chọn và badge "hot". Không dùng gradient làm
+            nền toàn trang hoặc nền toàn section. Không quá ba vị trí gradient mỗi trang.
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ SEMANTIC COLORS ═══ -->
+      <section id="semantic">
+        <div class="container">
+          <div class="section-head rise-in">
+            <p class="eyebrow">02 · COLOR</p>
+            <h2>Màu ngữ nghĩa</h2>
+            <p class="lede">
+              Năm trạng thái, mỗi trạng thái có bốn biến thể: base, nền (10%), viền (30%)
+              và chữ tối. Dùng biến thể đúng mục đích, không dùng base xanh trên chữ nhỏ.
+            </p>
+          </div>
+
+          <div class="status-row rise-in">
+            <span class="status-chip chip-live">Đang diễn ra</span>
+            <span class="status-chip chip-hot">Sắp kết thúc</span>
+            <span class="status-chip chip-ending">Còn hơn 1 ngày</span>
+            <span class="status-chip chip-new">Mới niêm yết</span>
+            <span class="status-chip chip-premium">Premium</span>
+          </div>
+
+          <div class="rise-in" style="overflow-x: auto">
+            <table class="sem-table">
+              <thead>
+                <tr>
+                  <th>Token</th>
+                  <th>Base</th>
+                  <th>Nền (10%)</th>
+                  <th>Viền (30%)</th>
+                  <th>Chữ (tối)</th>
+                  <th>Dùng cho</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>--color-live</code></td>
+                  <td><div class="swatch-stack"><span class="swatch" style="background: var(--color-live)"></span></div></td>
+                  <td><div class="swatch-stack"><span class="swatch bordered" style="background: var(--color-live-bg)"></span></div></td>
+                  <td><div class="swatch-stack"><span class="swatch bordered" style="background: var(--color-live-border)"></span></div></td>
+                  <td><div class="swatch-stack"><span class="swatch" style="background: var(--color-live-text)"></span></div></td>
+                  <td>Phiên đang chạy, trạng thái online, trả giá thành công</td>
+                </tr>
+                <tr>
+                  <td><code>--color-hot</code></td>
+                  <td><div class="swatch-stack"><span class="swatch" style="background: var(--color-hot)"></span></div></td>
+                  <td><div class="swatch-stack"><span class="swatch bordered" style="background: var(--color-hot-bg)"></span></div></td>
+                  <td><div class="swatch-stack"><span class="swatch bordered" style="background: var(--color-hot-border)"></span></div></td>
+                  <td><div class="swatch-stack"><span class="swatch" style="background: var(--color-hot-text)"></span></div></td>
+                  <td>Kết thúc dưới 1 giờ, lượt xem đột biến, vật phẩm hot</td>
+                </tr>
+                <tr>
+                  <td><code>--color-ending</code></td>
+                  <td><div class="swatch-stack"><span class="swatch" style="background: var(--color-ending)"></span></div></td>
+                  <td><div class="swatch-stack"><span class="swatch bordered" style="background: var(--color-ending-bg)"></span></div></td>
+                  <td><div class="swatch-stack"><span class="swatch bordered" style="background: var(--color-ending-border)"></span></div></td>
+                  <td><div class="swatch-stack"><span class="swatch" style="background: var(--color-ending-text)"></span></div></td>
+                  <td>Sắp kết thúc còn hơn 24 giờ, cảnh báo nhẹ</td>
+                </tr>
+                <tr>
+                  <td><code>--color-new</code></td>
+                  <td><div class="swatch-stack"><span class="swatch" style="background: var(--color-new)"></span></div></td>
+                  <td><div class="swatch-stack"><span class="swatch bordered" style="background: var(--color-new-bg)"></span></div></td>
+                  <td><div class="swatch-stack"><span class="swatch bordered" style="background: var(--color-new-border)"></span></div></td>
+                  <td><div class="swatch-stack"><span class="swatch" style="background: var(--color-new-text)"></span></div></td>
+                  <td>Niêm yết trong 24 giờ, lần đầu mở phiên</td>
+                </tr>
+                <tr>
+                  <td><code>--color-premium</code></td>
+                  <td><div class="swatch-stack"><span class="swatch" style="background: var(--color-premium)"></span></div></td>
+                  <td><div class="swatch-stack"><span class="swatch bordered" style="background: var(--color-premium-bg)"></span></div></td>
+                  <td><div class="swatch-stack"><span class="swatch bordered" style="background: var(--color-premium-border)"></span></div></td>
+                  <td><div class="swatch-stack"><span class="swatch" style="background: var(--color-premium-text)"></span></div></td>
+                  <td>Seller đã xác minh, tài khoản premium, dịch vụ nâng cao</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ SURFACE TINTS ═══ -->
+      <section id="surfaces">
+        <div class="container">
+          <div class="section-head rise-in">
+            <p class="eyebrow">03 · COLOR</p>
+            <h2>Tint bề mặt</h2>
+            <p class="lede">
+              Bốn tint nền rất nhạt để nhóm thông tin mà không cạnh tranh với nội dung.
+              Dùng cho: KPI card, chip danh mục, hàng thông báo, banner trạng thái.
+            </p>
+          </div>
+
+          <div class="kpi-grid rise-in">
+            <article class="kpi-card kpi-lavender">
+              <p class="kpi-label">Doanh thu đang chạy</p>
+              <p class="kpi-value">128,5tr</p>
+            </article>
+            <article class="kpi-card kpi-mint">
+              <p class="kpi-label">Phiên đang diễn ra</p>
+              <p class="kpi-value">8</p>
+            </article>
+            <article class="kpi-card kpi-peach">
+              <p class="kpi-label">Sắp kết thúc dưới 1 giờ</p>
+              <p class="kpi-value">4</p>
+            </article>
+            <article class="kpi-card kpi-sky">
+              <p class="kpi-label">Lượt trả giá hôm nay</p>
+              <p class="kpi-value">142</p>
+            </article>
+          </div>
+
+          <p class="section-note rise-in">
+            Lavender cho loạt số liệu chính, mint cho trạng thái khỏe, peach cho cảnh báo cận giờ,
+            sky cho số liệu hoạt động. Bốn tint cũng dùng cho chip danh mục, dòng thông báo và banner.
+          </p>
+        </div>
+      </section>
+
+      <!-- ═══ INTERACTION RULES ═══ -->
+      <section id="interactions">
+        <div class="container">
+          <div class="section-head rise-in">
+            <p class="eyebrow">04 · MOTION</p>
+            <h2>Luật hover và chuyển động</h2>
+            <p class="lede">
+              Chuyển động ngắn, nhanh và có lý do. Luôn có <code>prefers-reduced-motion</code>:
+              chỉ giữ chuyển đổi màu, tắt chuyển động khác.
+            </p>
+          </div>
+
+          <div class="demo-grid">
+            <div class="demo-item rise-in">
+              <p class="demo-label"><strong>1 · Card</strong>nâng 2px, đổ bóng mềm, viền tint 20% accent. Nội dung không di chuyển.</p>
+              <article class="demo-card">
+                <h3 class="title">MacBook Pro 14 M1 Pro</h3>
+                <p class="desc">Đã qua sử dụng · 128 lượt xem</p>
+              </article>
+            </div>
+
+            <div class="demo-item rise-in">
+              <p class="demo-label"><strong>2 · Nút chính</strong>hover đổi gradient, nhấn scale 0.98, active đậm hơn.</p>
+              <button class="btn-primary focusable" type="button">Tiếp tục trả giá</button>
+            </div>
+
+            <div class="demo-item rise-in">
+              <p class="demo-label"><strong>3 · Hàng bảng</strong>tint 2% accent khi hover, link hành động hiện dần từ 0.6 lên 1.0.</p>
+              <div style="overflow-x: auto">
+                <table class="table-demo">
+                  <thead>
+                    <tr>
+                      <th>Phiên</th>
+                      <th>Giá</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>MBP 14 M1 Pro 2021</td>
+                      <td><code class="tnum">18.500.000đ</code></td>
+                      <td><a class="table-action focusable" href="#">Xem</a></td>
+                    </tr>
+                    <tr>
+                      <td>Tai nghe Sony WH-1000XM5</td>
+                      <td><code class="tnum">4.900.000đ</code></td>
+                      <td><a class="table-action focusable" href="#">Xem</a></td>
+                    </tr>
+                    <tr>
+                      <td>iPad Pro M2 11 inch</td>
+                      <td><code class="tnum">12.300.000đ</code></td>
+                      <td><a class="table-action focusable" href="#">Xem</a></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="demo-item rise-in">
+              <p class="demo-label"><strong>4 · Link nav</strong>gạch chân trượt từ trái sang; không bao giờ chỉ fade.</p>
+              <nav class="ds-nav" style="margin: 0">
+                <a class="nav-link focusable" href="#">Trang chủ</a>
+                <a class="nav-link focusable" href="#">Đấu giá</a>
+                <a class="nav-link focusable" href="#">Bán hàng</a>
+              </nav>
+            </div>
+
+            <div class="demo-item rise-in">
+              <p class="demo-label"><strong>5 · Ảnh sản phẩm</strong>zoom 1.02 và sáng 1.05 khi hover, overflow giấu.</p>
+              <div class="zoom-media">
+                <img src="images/phone.jpg" alt="Điện thoại chụp trên nền trắng" width="600" height="400" />
+              </div>
+            </div>
+
+            <div class="demo-item rise-in">
+              <p class="demo-label"><strong>6 · Countdown dưới 5 phút</strong>vòng nhấp nháy màu hot, không chuyển màu nền.</p>
+              <span class="countdown-hot">00:04:21</span>
+            </div>
+
+            <div class="demo-item rise-in">
+              <p class="demo-label"><strong>7 · Chấm thông báo</strong>ping 1.8s ease-in-out, scale 1 đến 1.4 rồi về 1.</p>
+              <div>
+                <div class="notif-row"><span class="notif-dot" aria-hidden="true"></span>Bạn bị vượt giá trong phiên MBP 14</div>
+                <div class="notif-row"><span class="notif-dot" aria-hidden="true"></span>4 phiên sắp kết thúc trong giờ tới</div>
+                <div class="notif-row"><span class="notif-dot" aria-hidden="true"></span>Đơn #ORD-142 đã giao thành công</div>
+              </div>
+            </div>
+
+            <div class="demo-item rise-in">
+              <p class="demo-label"><strong>8 · Focus ring</strong>từ trong suốt sang accent trong 150ms, không giật.</p>
+              <input class="focusable" type="text" placeholder="Nhập email" aria-label="Focus demo" style="padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: var(--text-base); width: 100%; background: var(--surface);" />
+            </div>
+
+            <div class="demo-item rise-in">
+              <p class="demo-label"><strong>9 · Chuyển trang</strong>fade và trượt lên 8px trong 260ms.</p>
+              <div class="rise-in" style="border: 1px dashed var(--border); border-radius: var(--radius-lg); padding: var(--space-4)">
+                <p class="desc" style="color: var(--muted); font-size: var(--text-sm)">Mỗi section của trang đang chạm vào animation này khi vào viewport.</p>
+              </div>
+            </div>
+
+            <div class="demo-item rise-in">
+              <p class="demo-label"><strong>10 · Bộ đếm trả giá</strong>60ms mỗi chữ số, flash thành công tan trong 800ms. Nhấn để trải nghiệm.</p>
+              <div class="bid-box">
+                <p class="bid-value tnum" id="bid-value">18.500.000đ</p>
+                <button class="btn-bid" id="bid-btn" type="button">Trả giá +500.000</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="grad-rule rise-in">
+            <strong>Active tab dùng gradient:</strong> dưới đây là một ví dụ dùng đúng <code>--gradient-primary</code>
+            cho indicator tab đang chọn (một trong ba vị trí gradient được phép).
+          </div>
+          <div class="pill-group rise-in" role="tablist" aria-label="Bộ lọc phiên">
+            <button class="pill-tab is-active" id="tab-live" role="tab" aria-selected="true" type="button">Đang diễn ra</button>
+            <button class="pill-tab" id="tab-ending" role="tab" aria-selected="false" type="button">Sắp kết thúc</button>
+            <button class="pill-tab" id="tab-new" role="tab" aria-selected="false" type="button">Mới niêm yết</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ BEFORE / AFTER ═══ -->
+      <section id="beforeafter">
+        <div class="container">
+          <div class="section-head rise-in">
+            <p class="eyebrow">05 · VÍ DỤ</p>
+            <h2>Card phiên đấu giá: trước và sau</h2>
+            <p class="lede">
+              Cùng một card trên nền Stripe. Bản "trước" chỉ dùng token v1; bản "sau" thêm
+              màu ngữ nghĩa, tint, gradient badge và chuyển động hover. Hover vào cả hai để so sánh.
+            </p>
+          </div>
+
+          <div class="combo-grid">
+            <div class="combo-col rise-in">
+              <p class="combo-label">Trước <span class="tag">v1 · nền Stripe</span></p>
+              <article class="mini-auction">
+                <div class="ma-img">
+                  <img src="images/laptop.jpg" alt="MacBook Pro 14 inch M1 Pro" width="800" height="800" />
+                </div>
+                <div class="ma-body">
+                  <p class="ma-status mono">Đang diễn ra · 128 lượt xem</p>
+                  <p class="ma-title">MacBook Pro 14 inch M1 Pro 2021</p>
+                  <p class="ma-price-label">Giá hiện tại</p>
+                  <p class="ma-price tnum">18.500.000đ</p>
+                  <div class="ma-foot">
+                    <span class="timer-line">Kết thúc sau 02:14:36</span>
+                    <button class="ma-cta focusable" type="button">Trả giá</button>
+                  </div>
+                </div>
+              </article>
+            </div>
+
+            <div class="combo-col rise-in">
+              <p class="combo-label">Sau <span class="tag">v2 · màu + chuyển động</span></p>
+              <article class="mini-auction">
+                <div class="ma-img">
+                  <img src="images/laptop.jpg" alt="MacBook Pro 14 inch M1 Pro" width="800" height="800" />
+                </div>
+                <div class="ma-body">
+                  <p class="ma-status v2-hot">Sắp kết thúc · 42 lượt trả giá</p>
+                  <p class="ma-title">MacBook Pro 14 inch M1 Pro 2021</p>
+                  <p class="ma-price-label">Giá hiện tại</p>
+                  <p class="ma-price tnum">18.500.000đ</p>
+                  <div class="ma-foot">
+                    <span class="timer-line v2-ending">04:21 còn lại · 128 lượt xem</span>
+                    <button class="ma-cta focusable" type="button">Trả giá nhanh</button>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <p class="section-note rise-in">
+            Khác biệt chính: trạng thái "hot" dùng <code>--color-hot</code> thay vì chữ xám,
+            countdown chuyển sang <code>--color-ending</code>, ảnh zoom nhẹ khi hover và card
+            nâng 2px với viền tint accent. Không thêm hay xóa thông tin nào so với bản trước.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container">
+        <p>
+          AuctionHub design system v2 · Token đầy đủ trong DESIGN-SYSTEM-v2.md ·
+          <a href="index.html">Về trang chủ</a>
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      (function () {
+        var NAV_LINKS = document.querySelectorAll(".ds-nav .nav-link");
+        function setActive(anchor) {
+          NAV_LINKS.forEach(function (link) {
+            link.classList.toggle("is-active", link.getAttribute("href") === anchor);
+          });
+        }
+        var SECTIONS = document.querySelectorAll("main section[id]");
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                setActive("#" + entry.target.id);
+              }
+            });
+          },
+          { rootMargin: "-40% 0px -55% 0px" }
+        );
+        SECTIONS.forEach(function (section) {
+          observer.observe(section);
+        });
+
+        var tabs = document.querySelectorAll(".pill-tab");
+        tabs.forEach(function (tab) {
+          tab.addEventListener("click", function () {
+            tabs.forEach(function (other) {
+              var on = other === tab;
+              other.classList.toggle("is-active", on);
+              other.setAttribute("aria-selected", on ? "true" : "false");
+            });
+          });
+        });
+
+        var bidValue = document.getElementById("bid-value");
+        var bidBtn = document.getElementById("bid-btn");
+        var current = 18500000;
+        var STEP = 500000;
+
+        function formatVND(n) {
+          return n.toLocaleString("vi-VN").replace(/,/g, ".") + "đ";
+        }
+
+        bidBtn.addEventListener("click", function () {
+          var from = current;
+          var to = current + STEP;
+          current = to;
+          var digitsChanged = countChangedDigits(from, to);
+          var perDigit = 60;
+          var duration = Math.max(180, digitsChanged * perDigit);
+          animateNumber(from, to, duration);
+          flashBid();
+        });
+
+        function countChangedDigits(a, b) {
+          var sa = String(a);
+          var sb = String(b);
+          var n = Math.max(sa.length, sb.length);
+          var count = 0;
+          for (var i = 0; i < n; i++) {
+            var da = sa[sa.length - 1 - i] || "0";
+            var db = sb[sb.length - 1 - i] || "0";
+            if (da !== db) count++;
+          }
+          return count;
+        }
+
+        function animateNumber(from, to, duration) {
+          var start = null;
+          function step(ts) {
+            if (start === null) start = ts;
+            var t = Math.min(1, (ts - start) / duration);
+            var eased = 1 - Math.pow(1 - t, 3);
+            var value = Math.round(from + (to - from) * eased);
+            bidValue.textContent = formatVND(value);
+            if (t < 1) {
+              requestAnimationFrame(step);
+            }
+          }
+          requestAnimationFrame(step);
+        }
+
+        function flashBid() {
+          var valueBox = bidValue;
+          valueBox.classList.remove("is-flash");
+          void valueBox.offsetWidth;
+          valueBox.classList.add("is-flash");
+          setTimeout(function () {
+            valueBox.classList.remove("is-flash");
+          }, 800);
+        }
+      })();
+    </script>
+  
+
+    <script data-micro-interactions="js">
+      (function () {
+        var lazy = document.querySelectorAll('img[loading="lazy"]');
+        for (var i = 0; i < lazy.length; i++) {
+          (function (img) {
+            if (img.complete) { img.classList.add("micro-loaded"); return; }
+            img.addEventListener("load", function () {
+              img.classList.add("micro-loaded");
+            });
+          })(lazy[i]);
+        }
+
+        var bar = document.getElementById("scroll-progress");
+        if (!bar) return;
+        function paint() {
+          var doc = document.documentElement;
+          var max = doc.scrollHeight - window.innerHeight;
+          var p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+          bar.style.setProperty("--micro-prog", p.toFixed(4));
+        }
+        window.addEventListener("scroll", paint, { passive: true });
+        window.addEventListener("resize", paint);
+        paint();
+      })();
+    </script>
+
+  </body>
+</html>

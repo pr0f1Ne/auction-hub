@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  # 1. Cơ sở dữ liệu PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: auctionhub-db
+    restart: always
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: rootpassword
+      POSTGRES_DB: auctionhub
+    ports:
+      - "5432:5432"
+    volumes:
+      - auctionhub-pgdata:/var/lib/postgresql/data
+
+  # 2. pgAdmin (Công cụ quản lý Database trên Web)
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: auctionhub-pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@auctionhub.vn
+      PGADMIN_DEFAULT_PASSWORD: adminpassword
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+
+volumes:
+  auctionhub-pgdata:

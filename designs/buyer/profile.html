@@ -1,0 +1,1577 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hồ sơ của tôi | AuctionHub</title>
+    <meta
+      name="description"
+      content="Hồ sơ thành viên Nguyễn Văn A trên AuctionHub: phiên đang đấu giá, đơn đã thắng, phiên đang theo dõi và đánh giá."
+    />
+
+    <style>
+      /* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio.
+         Put this @layer first; product CSS outside the layer always wins. */
+      @layer od-layout {
+        :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+
+        /* containers */
+        .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+        .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+        .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+        .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+        .od-fill    { flex: 1 1 0; min-width: 0; }
+        .od-fixed   { flex: none; }
+        .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+
+        /* stacked information: each piece is its own line — never sibling inline spans */
+        .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+        :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+        .od-tile { display: grid; grid-template-rows: auto 1fr; }
+        :where(.od-tile) > :where(*) { display: block; }
+
+        /* media keeps its intrinsic ratio by default; never a distorted or cropped
+           cover by accident. height:auto lets the ratio win over an <img height="…">
+           attribute. Cropping to a uniform box is an explicit opt-in: set --od-ratio
+           AND add .od-media-cover together (per the core rule, only where a crop is
+           deliberate — tile thumbs, decorative fills — never on full-frame content). */
+        .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+        .od-media-cover { object-fit: cover; }
+
+        /* data text only — authored copy is rewritten to its budget instead */
+        .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+        .od-clamp-2 { -webkit-line-clamp: 2; }
+        .od-clamp-3 { -webkit-line-clamp: 3; }
+        .od-lines-2 { min-height: calc(2 * 1.4em); }   /* block-level reservation for a shared baseline */
+        .od-nowrap  { white-space: nowrap; }           /* 数字+单位 · 价格+起 · 日期+星期 */
+        .od-keep    { word-break: keep-all; overflow-wrap: anywhere; } /* CJK labels break at spaces / <wbr> first */
+
+        /* screen skeleton (optional): bars take their own space, the middle scrolls — no padding guessed for chrome */
+        .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+        .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+
+        /* horizontal rail: the next item peeks at the edge; trailing room survives overflow */
+        .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+                   padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+        .od-rail::-webkit-scrollbar { display: none; }
+        :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+        :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+
+        .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+        .od-touch  { min-width: 44px; min-height: 44px; }
+      }
+      /* /OD-LAYOUT-PRIMITIVES v1 */
+
+      /* ─── Design tokens ─────────────────────────────────────────────
+         Shared Stripe schema, resolved per the AuctionHub brief:
+         accent #635BFF, background #FFFFFF / #FAFAFA, charcoal text
+         #1A1A1A. Nội dung chỉ tham chiếu qua var(--name). */
+      :root {
+        --bg:           #ffffff;
+        --surface:      #ffffff;
+        --surface-warm: #fafafa;
+        --surface-side: #f9fafb;
+
+        --fg:    #1a1a1a;
+        --fg-2:  #374151;
+        --muted: #6b7280;
+        --meta:  var(--muted);
+
+        --border:      #e5e7eb;
+        --border-soft: var(--border);
+
+        --accent:    #635bff;
+        --accent-on: #ffffff;
+
+        --accent-hover:  #5851df;
+        --accent-active: #4f46d6;
+
+        --success:      #15be53;
+        --success-text: #0b7a44;
+        --success-bg:   #eaf7f1;
+        --warn:         #9b6829;
+        --danger:       #ea2261;
+        --danger-text:  #b4233e;
+        --danger-bg:    #fbeeef;
+        --urgent:       #ef4444;
+
+        --amber-text: #b45309;
+        --amber-bg:   #fef3c7;
+
+        --blue-text:  #1d4ed8;
+        --blue-bg:    #eff6ff;
+        --gray-text:  #6b7280;
+        --gray-bg:    #f3f4f6;
+
+        --on-dark:       #ffffff;
+        --on-dark-muted: rgba(255, 255, 255, 0.72);
+        --dark-bg:       #1a1a1a;
+        --dark-bg-2:     #111113;
+
+        --font-display:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-body:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-mono:
+          "SourceCodePro", "Source Code Pro",
+          ui-monospace, "SF Mono", "JetBrains Mono",
+          Menlo, Monaco, Consolas, monospace;
+
+        --text-xs:   12px;
+        --text-sm:   14px;
+        --text-base: 17px;
+        --text-lg:   19px;
+        --text-xl:   24px;
+        --text-2xl:  32px;
+        --text-3xl:  46px;
+
+        --leading-body:     1.55;
+        --leading-tight:    1.1;
+        --tracking-display: -0.02em;
+
+        --space-1:  4px;
+        --space-2:  8px;
+        --space-3:  12px;
+        --space-4:  16px;
+        --space-5:  20px;
+        --space-6:  24px;
+        --space-8:  32px;
+        --space-12: 48px;
+
+        --radius-sm: 4px;
+        --radius-md: 6px;
+        --radius-lg: 8px;
+
+        --elev-flat:   none;
+        --elev-ring:   0 0 0 1px var(--border);
+        --elev-soft:
+          rgba(50, 50, 93, 0.06) 0px 6px 18px -6px,
+          rgba(0,   0,  0, 0.06) 0px 3px 8px  -4px;
+        --elev-raised:
+          rgba(50, 50, 93, 0.16) 0px 24px 40px -28px,
+          rgba(0,   0,  0, 0.10) 0px 16px 32px -18px;
+
+        --motion-fast:   150ms;
+        --motion-base:   200ms;
+        --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+        --container-max:            1080px;
+        --container-gutter-desktop: 32px;
+        --container-gutter-tablet:  24px;
+        --container-gutter-phone:   20px;
+
+        --focus-ring: 0 0 0 3px rgba(99, 91, 255, 0.28);
+      }
+
+      /* ─── Base ─────────────────────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; }
+      html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--font-body);
+        font-size: var(--text-base);
+        line-height: var(--leading-body);
+        font-weight: 400;
+        font-feature-settings: "ss01";
+        -webkit-font-smoothing: antialiased;
+      }
+      strong { font-weight: 600; }
+      img { max-width: 100%; }
+
+      .tnum { font-feature-settings: "tnum", "ss01"; }
+
+      .container {
+        max-width: var(--container-max);
+        margin-inline: auto;
+        padding-inline: var(--container-gutter-desktop);
+      }
+
+      h1, h2, h3 {
+        font-family: var(--font-display);
+        font-weight: 300;
+        line-height: var(--leading-tight);
+        letter-spacing: var(--tracking-display);
+        color: var(--fg);
+        margin: 0;
+      }
+      p { margin: 0; }
+
+      a {
+        color: var(--fg);
+        text-decoration: underline;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+        font-feature-settings: "ss01";
+        transition: color var(--motion-fast) var(--ease-standard);
+      }
+      a:hover { color: var(--fg-2); }
+
+      /* ─── Buttons ──────────────────────────────────────────────── */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        padding: 10px 18px;
+        border-radius: var(--radius-sm);
+        font-family: var(--font-display);
+        font-feature-settings: "ss01";
+        font-weight: 500;
+        font-size: var(--text-base);
+        line-height: 1;
+        cursor: pointer;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--fg);
+        text-decoration: none;
+        min-height: 44px;
+        transition:
+          background-color var(--motion-fast) var(--ease-standard),
+          border-color var(--motion-fast) var(--ease-standard),
+          color var(--motion-fast) var(--ease-standard),
+          box-shadow var(--motion-fast) var(--ease-standard);
+      }
+      .btn:focus-visible,
+      .watch-heart:focus-visible,
+      .avatar-edit:focus-visible,
+      .link-btn:focus-visible,
+      .tabs button:focus-visible,
+      a:focus-visible {
+        outline: 2px solid var(--fg-2);
+        outline-offset: 2px;
+      }
+
+      .btn-primary {
+        background: var(--accent);
+        color: var(--accent-on);
+      }
+      .btn-primary:hover  { background: var(--accent-hover); color: var(--accent-on); }
+      .btn-primary:active { background: var(--accent-active); color: var(--accent-on); }
+
+      .btn-ghost {
+        background: transparent;
+        color: var(--fg);
+        border-color: var(--border);
+      }
+      .btn-ghost:hover {
+        background: var(--surface-warm);
+        color: var(--fg);
+        border-color: #d1d5db;
+      }
+
+      .btn-sm {
+        padding: 8px 14px;
+        font-size: var(--text-sm);
+        min-height: 40px;
+      }
+
+      /* ─── Site header ──────────────────────────────────────────── */
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: rgba(255, 255, 255, 0.92);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border);
+      }
+      .site-header .container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-4);
+        height: 72px;
+      }
+      .brand {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 2px;
+        font-family: var(--font-display);
+        font-feature-settings: "ss01";
+        font-size: 19px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--fg);
+        text-decoration: none;
+      }
+      .brand:hover { color: var(--fg); }
+      .brand-dot { color: var(--accent); }
+
+      .nav { display: flex; align-items: center; gap: var(--space-3); }
+      .nav-link {
+        text-decoration: none;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--fg-2);
+        border-radius: var(--radius-sm);
+        display: inline-flex;
+        align-items: center;
+        min-height: 40px;
+      }
+      .nav-link:hover { color: var(--fg); }
+
+      /* ─── Breadcrumb ───────────────────────────────────────────── */
+      .crumbs {
+        padding-block: var(--space-5) 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-2);
+        font-size: var(--text-sm);
+        color: var(--muted);
+      }
+      .crumbs a { color: var(--muted); text-decoration: none; }
+      .crumbs a:hover { color: var(--fg); }
+      .crumbs .sep { color: #d1d5db; }
+
+      /* ─── Profile header ───────────────────────────────────────── */
+      .profile-section { padding-block: var(--space-6) var(--space-6); }
+      .profile-head {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: var(--space-5);
+      }
+      .avatar-wrap { position: relative; flex: none; }
+      .avatar-profile {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #ffffff;
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .avatar-edit {
+        position: absolute;
+        right: -4px;
+        bottom: -4px;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: 2px solid var(--surface);
+        background: var(--surface-warm);
+        color: var(--fg-2);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+      }
+      .avatar-edit:hover { background: #ece9ff; color: var(--accent-active); }
+      .avatar-edit svg { width: 14px; height: 14px; }
+
+      .profile-id { display: grid; gap: 6px; min-width: 0; }
+      .profile-name {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        flex-wrap: wrap;
+      }
+      .profile-name h1 {
+        display: inline-block;
+        font-size: var(--text-2xl);
+        font-weight: 500;
+        letter-spacing: var(--tracking-display);
+        line-height: 1.2;
+      }
+      .verified-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: var(--text-xs);
+        font-weight: 600;
+        color: var(--blue-text);
+        background: var(--blue-bg);
+        border-radius: var(--radius-sm);
+        padding: 3px 8px;
+        line-height: 1.4;
+        white-space: nowrap;
+      }
+      .verified-badge svg { width: 12px; height: 12px; }
+      .rating-link {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 6px;
+        width: max-content;
+        font-size: var(--text-base);
+        font-weight: 500;
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .rating-link:hover { color: var(--accent-hover); text-decoration: underline; }
+      .profile-facts {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2) var(--space-6);
+      }
+      .profile-facts li {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: var(--text-sm);
+        color: var(--fg-2);
+        min-height: 24px;
+      }
+      .profile-facts svg { width: 15px; height: 15px; color: var(--muted); flex-shrink: 0; }
+      .verify-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--blue-text);
+        background: var(--blue-bg);
+        border-radius: 999px;
+        padding: 1px 8px;
+        line-height: 1.5;
+        white-space: nowrap;
+      }
+      .verify-tag svg { width: 10px; height: 10px; }
+      .profile-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+      }
+
+      /* ─── Tabs ─────────────────────────────────────────────────── */
+      .tabs {
+        display: flex;
+        gap: 4px;
+        border-bottom: 1px solid var(--border);
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .tabs::-webkit-scrollbar { display: none; }
+      .tabs button {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        padding: 12px 16px;
+        font: inherit;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--fg-2);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        white-space: nowrap;
+        transition: color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+      }
+      .tabs button:hover { color: var(--fg); }
+      .tabs button[aria-selected="true"] {
+        color: var(--accent-active);
+        font-weight: 600;
+        border-bottom-color: var(--accent);
+      }
+      .tabs .tcount {
+        display: inline-block;
+        margin-left: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        font-feature-settings: "tnum", "ss01";
+        color: var(--muted);
+        background: var(--gray-bg);
+        border-radius: 999px;
+        padding: 1px 8px;
+        line-height: 1.5;
+      }
+      .tabs button[aria-selected="true"] .tcount { color: var(--accent-active); background: #eceaff; }
+
+      .tab-panel { padding-block: var(--space-8) var(--space-12); }
+      .tab-note { font-size: var(--text-sm); color: var(--muted); margin-block-end: var(--space-5); }
+
+      /* ─── Bảng phiên đang đấu giá (cùng kiểu bảng dashboard) ──── */
+      .tbl-scroll { overflow-x: auto; }
+      .tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+      .tbl thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--surface-warm);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        text-align: left;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      .tbl tbody td { padding: 12px 16px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; color: var(--fg-2); }
+      .tbl tbody tr:last-child td { border-bottom: 0; }
+      .tbl tbody tr { transition: background var(--motion-fast) var(--ease-standard); }
+      .tbl tbody tr:hover { background: var(--surface-warm); }
+      .tbl tbody tr:nth-child(even) { background: var(--surface-warm); }
+      .tbl tbody tr:nth-child(even):hover { background: #f4f4f5; }
+      .tbl tbody tr.row-over td:first-child { box-shadow: inset 3px 0 0 var(--danger-text); }
+
+      .prod { display: flex; align-items: center; gap: 12px; min-width: 0; }
+      .prod .thumb {
+        flex: none;
+        width: 48px; height: 48px;
+        border-radius: 6px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        background: var(--surface-warm);
+      }
+      .prod .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .prod .pname { display: block; font-weight: 500; color: var(--fg); line-height: 1.3; }
+      .prod a.pname:hover { text-decoration: underline; color: var(--accent-active); }
+      .prod .pid { display: block; font-size: 12px; color: var(--muted); }
+
+      .price-cell, .bid-cell { font-family: var(--font-mono); font-feature-settings: "tnum"; white-space: nowrap; }
+      .price-cell { font-weight: 500; color: var(--fg); }
+      .bid-none { color: var(--muted); }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        border-radius: 999px;
+        padding: 3px 10px 3px 8px;
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1.5;
+        white-space: nowrap;
+      }
+      .status .dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+      .st-lead  { color: var(--success-text); background: var(--success-bg); }
+      .st-lead .dot  { background: var(--success); }
+      .st-over  { color: var(--danger-text); background: var(--danger-bg); }
+      .st-over .dot  { background: var(--danger); }
+      .st-idle  { color: var(--gray-text); background: var(--gray-bg); }
+      .st-idle .dot  { background: #9ca3af; }
+      .st-pay   { color: var(--amber-text); background: var(--amber-bg); }
+      .st-pay .dot   { background: var(--warn); }
+      .st-ship  { color: var(--blue-text); background: var(--blue-bg); }
+      .st-ship .dot  { background: var(--blue-text); }
+      .st-done  { color: var(--success-text); background: var(--success-bg); }
+      .st-done .dot  { background: var(--success); }
+
+      .countdown { font-family: var(--font-mono); font-feature-settings: "tnum"; white-space: nowrap; color: var(--fg); }
+      .countdown.urgent { color: var(--danger-text); font-weight: 600; }
+
+      /* ─── Danh sách đơn đã thắng ────────────────────────────────── */
+      .won-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--surface);
+        overflow: hidden;
+      }
+      .won-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: var(--space-4);
+        padding: var(--space-4);
+      }
+      .won-row + .won-row { border-top: 1px solid var(--border); }
+      .won-row:nth-child(even) { background: var(--surface-warm); }
+      .won-thumb {
+        width: 56px;
+        height: 42px;
+        object-fit: cover;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        background: var(--surface-warm);
+        flex: none;
+      }
+      .won-info { display: grid; gap: 2px; min-width: 0; }
+      .won-title { font-weight: 600; color: var(--fg); }
+      .won-meta { font-size: var(--text-sm); color: var(--muted); }
+      .won-right { display: grid; gap: 6px; justify-items: end; min-width: 0; }
+      .won-price { font-family: var(--font-mono); font-feature-settings: "tnum"; font-weight: 500; color: var(--fg); }
+      .won-line {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: var(--space-3);
+        flex-wrap: wrap;
+      }
+      .pay-note {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: var(--text-sm);
+        color: var(--muted);
+      }
+      .pay-note svg { width: 14px; height: 14px; color: var(--warn); flex: none; }
+      .pay-time {
+        font-family: var(--font-mono);
+        font-feature-settings: "tnum";
+        font-weight: 600;
+        color: var(--warn);
+        white-space: nowrap;
+      }
+      .link-btn {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        padding: 4px;
+        font: inherit;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--accent);
+        cursor: pointer;
+      }
+      .link-btn:hover { color: var(--accent-hover); text-decoration: underline; }
+
+      /* ─── Lưới phiên đang theo dõi ─────────────────────────────── */
+      .sale-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--space-6);
+      }
+      .sale-card {
+        position: relative;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: box-shadow var(--motion-base) var(--ease-standard), border-color var(--motion-base) var(--ease-standard);
+      }
+      .sale-card:hover { box-shadow: var(--elev-soft); border-color: #d7dae0; }
+      .sale-card .media { padding: var(--space-3) var(--space-3) 0; }
+      .sale-card .media img {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        border-radius: var(--radius-md);
+        background: var(--surface-warm);
+      }
+      .watch-heart {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        z-index: 2;
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.94);
+        color: var(--accent);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        transition: background-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+      }
+      .watch-heart:hover { background: #ece9ff; border-color: #d3cff8; }
+      .watch-heart svg { width: 16px; height: 16px; }
+      .sale-body {
+        padding: var(--space-3) var(--space-4) var(--space-4);
+        display: grid;
+        gap: var(--space-3);
+        flex: 1;
+      }
+      .sale-card .card-title {
+        font-family: var(--font-display);
+        font-size: 17px;
+        font-weight: 500;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+        color: var(--fg);
+      }
+      .sale-card .card-title a { color: var(--fg); text-decoration: none; }
+      .sale-card .card-title a:hover { color: var(--accent); }
+      .sale-price-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: var(--space-3);
+      }
+      .price-grid { display: grid; gap: 2px; }
+      .price-label { font-size: var(--text-xs); color: var(--muted); }
+      .sale-price {
+        font-family: var(--font-display);
+        font-feature-settings: "tnum", "ss01";
+        font-weight: 500;
+        font-size: 20px;
+        color: var(--fg);
+        white-space: nowrap;
+      }
+      .countdown-wrap { display: grid; gap: 2px; justify-items: end; text-align: right; }
+      .countdown-time {
+        font-family: var(--font-mono);
+        font-feature-settings: "tnum";
+        font-size: var(--text-xs);
+        color: var(--fg-2);
+        min-height: 1.4em;
+        white-space: nowrap;
+      }
+      .sale-card .btn { width: 100%; }
+
+      /* ─── Đánh giá ─────────────────────────────────────────────── */
+      .review-list { display: grid; gap: var(--space-5); }
+      .review-card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--surface);
+        padding: var(--space-5);
+        display: grid;
+        gap: var(--space-3);
+      }
+      .review-head { display: flex; align-items: center; gap: var(--space-3); }
+      .review-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: var(--gray-bg);
+        color: var(--fg-2);
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: var(--text-sm);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex: none;
+      }
+      .review-by { display: grid; gap: 1px; min-width: 0; }
+      .review-name { font-weight: 500; font-size: var(--text-sm); color: var(--fg); }
+      .review-meta { font-size: var(--text-xs); color: var(--muted); }
+      .review-stars {
+        margin-left: auto;
+        display: inline-flex;
+        gap: 2px;
+        font-size: 15px;
+        line-height: 1;
+        letter-spacing: 0.06em;
+      }
+      .review-stars .r5 { color: var(--accent); }
+      .review-stars .r0 { color: #d1d5db; }
+      .review-text {
+        font-size: var(--text-sm);
+        color: var(--fg-2);
+        line-height: var(--leading-body);
+      }
+
+      /* ─── Toast ────────────────────────────────────────────────── */
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        transform: translate(-50%, 16px);
+        background: var(--dark-bg);
+        color: #fff;
+        font-size: var(--text-sm);
+        padding: 11px 18px;
+        border-radius: 8px;
+        box-shadow: var(--elev-soft);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--motion-base) var(--ease-standard), transform var(--motion-base) var(--ease-standard);
+        z-index: 60;
+      }
+      .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+      /* ─── Footer ───────────────────────────────────────────────── */
+      .site-footer {
+        border-top: 1px solid var(--border);
+        background: var(--surface-warm);
+        padding-block: var(--space-6);
+      }
+      .site-footer .container {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-3);
+        font-size: var(--text-sm);
+        color: var(--muted);
+      }
+      .site-footer a { color: var(--fg-2); text-decoration: none; font-weight: 500; }
+      .site-footer a:hover { color: var(--fg); }
+
+      /* ─── Responsive ───────────────────────────────────────────── */
+      @media (max-width: 1023px) {
+        .sale-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (max-width: 719px) {
+        .container { padding-inline: var(--container-gutter-phone); }
+        .profile-head { grid-template-columns: auto minmax(0, 1fr); }
+        .profile-actions { grid-column: 1 / -1; justify-content: flex-start; }
+        .won-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+        .won-right { grid-column: 1 / -1; justify-items: start; }
+        .won-line { justify-content: flex-start; }
+        .sale-grid { grid-template-columns: 1fr; }
+        .site-footer .container { flex-direction: column; align-items: flex-start; }
+      }
+    </style>
+  
+
+    <!-- OD MICRO-INTERACTIONS START -->
+    <style data-micro-interactions="css">
+      /* Cross-page micro-interactions: focus ring, link slide underline,
+         button press, lazy image fade, dialog rise, scroll progress. */
+
+      :focus-visible {
+        outline: 2px solid var(--accent, #635bff);
+        outline-offset: 4px;
+        transition: outline-color 120ms ease;
+      }
+
+      /* Unify link underline into one animated system. !important suppresses
+         per-page text-decoration so only the slide underline renders; the
+         element-level background-image only affects painting, never layout. */
+      a {
+        text-decoration: none !important;
+        background-image: linear-gradient(currentColor, currentColor);
+        background-repeat: no-repeat;
+        background-position: 0 100%;
+        background-size: 0 1px;
+        background-origin: border-box;
+        transition:
+          background-size 150ms cubic-bezier(0.2, 0, 0, 1),
+          color 150ms ease,
+          background-color 150ms ease,
+          border-color 150ms ease,
+          opacity 150ms ease,
+          transform 150ms ease;
+      }
+      a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover {
+        background-size: 100% 1px;
+      }
+
+      button:not(.pwd-toggle):active,
+      .btn:active,
+      [role="button"]:active {
+        transform: scale(0.98);
+      }
+
+      @keyframes micro-rise {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      [role="dialog"] > *,
+      .drawer-inner > *,
+      .drawer-panel > * {
+        animation: micro-rise 260ms cubic-bezier(0.2, 0, 0, 1) both;
+      }
+      [role="dialog"] > * + *,
+      .drawer-inner > * + *,
+      .drawer-panel > * + * {
+        animation-delay: 50ms;
+      }
+
+      img[loading="lazy"] {
+        opacity: 0.8;
+        transition: opacity 260ms ease;
+      }
+      img[loading="lazy"].micro-loaded { opacity: 1; }
+
+      #scroll-progress {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%;
+        height: 2px;
+        transform: scaleX(var(--micro-prog, 0));
+        transform-origin: left center;
+        background: var(--accent, #635bff);
+        z-index: 1000;
+        pointer-events: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        a { background-image: none; }
+        a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover { background-size: 0 1px; }
+        button:not(.pwd-toggle):active,
+        .btn:active,
+        [role="button"]:active { transform: none; }
+        [role="dialog"] > *,
+        .drawer-inner > *,
+        .drawer-panel > * { animation: none; }
+        img[loading="lazy"] { opacity: 1; transition: none; }
+        #scroll-progress { transform: none; }
+      }
+    </style>
+    <!-- /OD MICRO-INTERACTIONS -->
+
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a class="brand" href="index.html" aria-label="AuctionHub trang chủ">
+          AuctionHub<span class="brand-dot">.</span>
+        </a>
+
+        <nav class="nav" aria-label="Điều hướng chính">
+          <a class="nav-link" href="index.html">Trang chủ</a>
+          <a class="nav-link" href="index.html#phien-dang-dien-ra">Phiên đang diễn ra</a>
+          <a class="nav-link" href="index.html#how-it-works">Cách hoạt động</a>
+        </nav>
+
+        <a class="btn btn-ghost" href="login.html">Đăng nhập</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <div class="container">
+        <nav class="crumbs" aria-label="Chuỗi điều hướng">
+          <a href="index.html">Trang chủ</a>
+          <span class="sep" aria-hidden="true">/</span>
+          <span>Hồ sơ</span>
+        </nav>
+
+        <!-- ═══ PROFILE HEADER ═══ -->
+        <section class="profile-section" aria-label="Hồ sơ của Nguyễn Văn A">
+          <div class="profile-head">
+            <span class="avatar-wrap">
+              <span class="avatar-profile" aria-hidden="true">NA</span>
+              <button type="button" class="avatar-edit" id="avatar-edit" aria-label="Đổi ảnh đại diện">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z" />
+                  <circle cx="12" cy="13" r="3" />
+                </svg>
+              </button>
+            </span>
+
+            <div class="profile-id">
+              <div class="profile-name">
+                <h1>Nguyễn Văn A</h1>
+                <span class="verified-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                  Đã xác minh CCCD
+                </span>
+              </div>
+              <a class="rating-link" href="#" id="rating-link" aria-label="Xem 23 đánh giá của Nguyễn Văn A">
+                <span aria-hidden="true">4.8</span>
+                <span class="tnum" aria-hidden="true">★</span>
+                <span>(23 đánh giá)</span>
+              </a>
+              <ul class="profile-facts">
+                <li>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect width="20" height="16" x="2" y="4" rx="2" />
+                    <path d="m22 7-10 5L2 7" />
+                  </svg>
+                  nguyen.a@email.com
+                  <span class="verify-tag">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                    Đã xác minh
+                  </span>
+                </li>
+                <li>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z" />
+                  </svg>
+                  0901 *** 456
+                  <span class="verify-tag">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                    Đã xác minh
+                  </span>
+                </li>
+                <li>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 2" />
+                  </svg>
+                  Thành viên từ Tháng 3, 2026
+                </li>
+              </ul>
+            </div>
+
+            <div class="profile-actions">
+              <button class="btn btn-ghost" type="button" id="btn-edit">Chỉnh sửa hồ sơ</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══ TABS ═══ -->
+        <div class="tabs" role="tablist" aria-label="Nội dung hồ sơ">
+          <button type="button" role="tab" id="tab-dounding" aria-selected="true" aria-controls="panel-dounding" data-panel="dounding">Đang đấu giá<span class="tcount">4</span></button>
+          <button type="button" role="tab" id="tab-dathang" aria-selected="false" aria-controls="panel-dathang" data-panel="dathang">Đã thắng<span class="tcount">12</span></button>
+          <button type="button" role="tab" id="tab-dinding" aria-selected="false" aria-controls="panel-dinding" data-panel="dinding">Đang theo dõi<span class="tcount">8</span></button>
+          <button type="button" role="tab" id="tab-danhgia" aria-selected="false" aria-controls="panel-danhgia" data-panel="danhgia">Đánh giá<span class="tcount">23</span></button>
+        </div>
+
+        <!-- ═══ PANEL: ĐANG ĐẤU GIÁ ═══ -->
+        <section class="tab-panel" id="panel-dounding" role="tabpanel" aria-labelledby="tab-dounding">
+          <p class="tab-note">4 phiên đang nhận giá. Bấm vào tên sản phẩm để xem chi tiết.</p>
+          <div class="tbl-scroll">
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th scope="col">Sản phẩm</th>
+                  <th scope="col">Giá hiện tại</th>
+                  <th scope="col">Bid của tôi</th>
+                  <th scope="col">Trạng thái</th>
+                  <th scope="col">Kết thúc</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr data-countdown="9252">
+                  <td>
+                    <div class="prod">
+                      <span class="thumb"><img src="images/laptop.jpg" alt="MacBook Pro 14 M3 2023" width="800" height="800" loading="lazy" /></span>
+                      <span class="pmeta">
+                        <a class="pname" href="auction-detail.html">MacBook Pro 14 M3 2023</a>
+                        <span class="pid">#AU-1042</span>
+                      </span>
+                    </div>
+                  </td>
+                  <td class="price-cell">36.500.000đ</td>
+                  <td class="bid-cell">36.500.000đ</td>
+                  <td><span class="status st-lead"><span class="dot"></span>Đang dẫn đầu</span></td>
+                  <td><span class="countdown" data-sec="9252">02:34:12</span></td>
+                </tr>
+                <tr class="row-over" data-countdown="2538">
+                  <td>
+                    <div class="prod">
+                      <span class="thumb"><img src="images/phone.jpg" alt="iPhone 15 Pro Max" width="600" height="400" loading="lazy" /></span>
+                      <span class="pmeta">
+                        <a class="pname" href="auction-detail.html">iPhone 15 Pro Max</a>
+                        <span class="pid">#AU-1058</span>
+                      </span>
+                    </div>
+                  </td>
+                  <td class="price-cell">24.800.000đ</td>
+                  <td class="bid-cell">24.500.000đ</td>
+                  <td><span class="status st-over"><span class="dot"></span>Bị vượt</span></td>
+                  <td><span class="countdown urgent" data-sec="2538">00:42:18</span></td>
+                </tr>
+                <tr class="row-over" data-countdown="25865">
+                  <td>
+                    <div class="prod">
+                      <span class="thumb"><img src="images/tablet.jpg" alt="iPad Pro 11 M4" width="600" height="427" loading="lazy" /></span>
+                      <span class="pmeta">
+                        <a class="pname" href="auction-detail.html">iPad Pro 11 M4</a>
+                        <span class="pid">#AU-1066</span>
+                      </span>
+                    </div>
+                  </td>
+                  <td class="price-cell">21.500.000đ</td>
+                  <td class="bid-cell">21.000.000đ</td>
+                  <td><span class="status st-over"><span class="dot"></span>Bị vượt</span></td>
+                  <td><span class="countdown" data-sec="25865">07:11:05</span></td>
+                </tr>
+                <tr data-countdown="68651">
+                  <td>
+                    <div class="prod">
+                      <span class="thumb"><img src="images/headphones.jpg" alt="Sony WH-1000XM5" width="600" height="400" loading="lazy" /></span>
+                      <span class="pmeta">
+                        <a class="pname" href="auction-detail.html">Sony WH-1000XM5</a>
+                        <span class="pid">#AU-1071</span>
+                      </span>
+                    </div>
+                  </td>
+                  <td class="price-cell">4.500.000đ</td>
+                  <td class="bid-cell bid-none">-</td>
+                  <td><span class="status st-idle"><span class="dot"></span>Chưa bid</span></td>
+                  <td><span class="countdown" data-sec="68651">19:04:11</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ═══ PANEL: ĐÃ THẮNG ═══ -->
+        <section class="tab-panel" id="panel-dathang" role="tabpanel" aria-labelledby="tab-dathang" hidden>
+          <p class="tab-note">12 đơn đã thắng. Hiển thị 4 gần nhất.</p>
+          <ol class="won-list">
+            <li class="won-row">
+              <img class="won-thumb" src="images/laptop.jpg" alt="MacBook Pro 14 M3 2023" width="56" height="42" loading="lazy" />
+              <span class="won-info">
+                <span class="won-title">MacBook Pro 14 M3 2023</span>
+                <span class="won-meta">Mã đơn #ORD-142 · Thắng 18/09/2026</span>
+              </span>
+              <span class="won-right">
+                <span class="won-price tnum">36.500.000đ</span>
+                <span class="won-line">
+                  <span class="status st-pay"><span class="dot"></span>Chờ thanh toán</span>
+                  <span class="pay-note">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 6v6l4 2" />
+                    </svg>
+                    còn <span class="pay-time" data-sec="1392">00:23:12</span>
+                  </span>
+                  <button type="button" class="link-btn" data-order="ORD-142" data-act="pay">Thanh toán</button>
+                </span>
+              </span>
+            </li>
+            <li class="won-row">
+              <img class="won-thumb" src="images/phone.jpg" alt="iPhone 14 Pro" width="56" height="42" loading="lazy" />
+              <span class="won-info">
+                <span class="won-title">iPhone 14 Pro</span>
+                <span class="won-meta">Mã đơn #ORD-138 · Thắng 15/09/2026</span>
+              </span>
+              <span class="won-right">
+                <span class="won-price tnum">18.500.000đ</span>
+                <span class="won-line">
+                  <span class="pay-note">Đã thanh toán</span>
+                  <span class="status st-ship"><span class="dot"></span>Đang giao</span>
+                  <button type="button" class="link-btn" data-order="ORD-138" data-act="ship">Xem đơn</button>
+                </span>
+              </span>
+            </li>
+            <li class="won-row">
+              <img class="won-thumb" src="images/headphones.jpg" alt="AirPods Pro 2" width="56" height="42" loading="lazy" />
+              <span class="won-info">
+                <span class="won-title">AirPods Pro 2</span>
+                <span class="won-meta">Mã đơn #ORD-135 · Thắng 10/09/2026</span>
+              </span>
+              <span class="won-right">
+                <span class="won-price tnum">4.200.000đ</span>
+                <span class="won-line">
+                  <span class="status st-done"><span class="dot"></span>Hoàn thành</span>
+                  <button type="button" class="link-btn" data-order="ORD-135" data-act="review">Đánh giá</button>
+                </span>
+              </span>
+            </li>
+            <li class="won-row">
+              <img class="won-thumb" src="images/tablet.jpg" alt="iPad Pro 11 M2" width="56" height="42" loading="lazy" />
+              <span class="won-info">
+                <span class="won-title">iPad Pro 11 M2</span>
+                <span class="won-meta">Mã đơn #ORD-129 · Thắng 02/09/2026</span>
+              </span>
+              <span class="won-right">
+                <span class="won-price tnum">19.800.000đ</span>
+                <span class="won-line">
+                  <span class="status st-done"><span class="dot"></span>Hoàn thành</span>
+                  <button type="button" class="link-btn" data-order="ORD-129" data-act="review">Đánh giá</button>
+                </span>
+              </span>
+            </li>
+          </ol>
+        </section>
+
+        <!-- ═══ PANEL: ĐANG THEO DÕI ═══ -->
+        <section class="tab-panel" id="panel-dinding" role="tabpanel" aria-labelledby="tab-dinding" hidden>
+          <p class="tab-note" id="watch-note">8 phiên bạn đang theo dõi. Bạn sẽ nhận thông báo 30 phút trước khi phiên kết thúc.</p>
+          <div class="sale-grid" id="watch-grid">
+            <article class="sale-card watch-card">
+              <button type="button" class="watch-heart" aria-pressed="true" aria-label="Bỏ theo dõi MacBook Pro 14 M3 2023">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 21s-6.7-4.35-9.33-8.11C.9 10.6 1.72 7.34 4.4 6.2c1.74-.74 3.72-.1 4.95 1.5L12 10.4l2.65-2.7c1.23-1.6 3.21-2.24 4.95-1.5 2.7 1.14 3.53 4.4 1.73 6.69C18.7 16.65 12 21 12 21Z" />
+                </svg>
+              </button>
+              <a class="media" href="auction-detail.html">
+                <img src="images/laptop.jpg" alt="MacBook Pro 14 M3 2023" width="800" height="800" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">MacBook Pro 14 M3 2023</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">38.500.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="countdown-time" data-sec="2538">--:--:--</span>
+                    <span class="price-label">Kết thúc sau</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="MacBook Pro 14 M3 2023">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card watch-card">
+              <button type="button" class="watch-heart" aria-pressed="true" aria-label="Bỏ theo dõi MacBook Pro 16 M3 Max">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 21s-6.7-4.35-9.33-8.11C.9 10.6 1.72 7.34 4.4 6.2c1.74-.74 3.72-.1 4.95 1.5L12 10.4l2.65-2.7c1.23-1.6 3.21-2.24 4.95-1.5 2.7 1.14 3.53 4.4 1.73 6.69C18.7 16.65 12 21 12 21Z" />
+                </svg>
+              </button>
+              <a class="media" href="auction-detail.html">
+                <img src="images/mbp-front.jpg" alt="MacBook Pro 16 M3 Max" width="1600" height="1067" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">MacBook Pro 16 M3 Max</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">63.000.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="countdown-time" data-sec="68651">--:--:--</span>
+                    <span class="price-label">Kết thúc sau</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="MacBook Pro 16 M3 Max">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card watch-card">
+              <button type="button" class="watch-heart" aria-pressed="true" aria-label="Bỏ theo dõi iPhone 15 Pro Max 256GB">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 21s-6.7-4.35-9.33-8.11C.9 10.6 1.72 7.34 4.4 6.2c1.74-.74 3.72-.1 4.95 1.5L12 10.4l2.65-2.7c1.23-1.6 3.21-2.24 4.95-1.5 2.7 1.14 3.53 4.4 1.73 6.69C18.7 16.65 12 21 12 21Z" />
+                </svg>
+              </button>
+              <a class="media" href="auction-detail.html">
+                <img src="images/phone.jpg" alt="iPhone 15 Pro Max 256GB" width="600" height="400" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">iPhone 15 Pro Max 256GB</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">24.800.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="countdown-time" data-sec="9252">--:--:--</span>
+                    <span class="price-label">Kết thúc sau</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="iPhone 15 Pro Max 256GB">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card watch-card">
+              <button type="button" class="watch-heart" aria-pressed="true" aria-label="Bỏ theo dõi iPad Pro 11 M4 256GB">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 21s-6.7-4.35-9.33-8.11C.9 10.6 1.72 7.34 4.4 6.2c1.74-.74 3.72-.1 4.95 1.5L12 10.4l2.65-2.7c1.23-1.6 3.21-2.24 4.95-1.5 2.7 1.14 3.53 4.4 1.73 6.69C18.7 16.65 12 21 12 21Z" />
+                </svg>
+              </button>
+              <a class="media" href="auction-detail.html">
+                <img src="images/tablet.jpg" alt="iPad Pro 11 M4 256GB" width="600" height="427" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">iPad Pro 11 M4 256GB</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">21.500.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="countdown-time" data-sec="25865">--:--:--</span>
+                    <span class="price-label">Kết thúc sau</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="iPad Pro 11 M4 256GB">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card watch-card">
+              <button type="button" class="watch-heart" aria-pressed="true" aria-label="Bỏ theo dõi MacBook Air 13 M2 2022">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 21s-6.7-4.35-9.33-8.11C.9 10.6 1.72 7.34 4.4 6.2c1.74-.74 3.72-.1 4.95 1.5L12 10.4l2.65-2.7c1.23-1.6 3.21-2.24 4.95-1.5 2.7 1.14 3.53 4.4 1.73 6.69C18.7 16.65 12 21 12 21Z" />
+                </svg>
+              </button>
+              <a class="media" href="auction-detail.html">
+                <img src="images/mbp-angle.jpg" alt="MacBook Air 13 M2 2022" width="1600" height="1280" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">MacBook Air 13 M2 2022</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">19.500.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="countdown-time" data-sec="130500">--:--:--</span>
+                    <span class="price-label">Kết thúc sau</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="MacBook Air 13 M2 2022">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card watch-card">
+              <button type="button" class="watch-heart" aria-pressed="true" aria-label="Bỏ theo dõi AirPods Max">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 21s-6.7-4.35-9.33-8.11C.9 10.6 1.72 7.34 4.4 6.2c1.74-.74 3.72-.1 4.95 1.5L12 10.4l2.65-2.7c1.23-1.6 3.21-2.24 4.95-1.5 2.7 1.14 3.53 4.4 1.73 6.69C18.7 16.65 12 21 12 21Z" />
+                </svg>
+              </button>
+              <a class="media" href="auction-detail.html">
+                <img src="images/headphones.jpg" alt="AirPods Max" width="600" height="400" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">AirPods Max</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">6.900.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="countdown-time" data-sec="48200">--:--:--</span>
+                    <span class="price-label">Kết thúc sau</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="AirPods Max">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card watch-card">
+              <button type="button" class="watch-heart" aria-pressed="true" aria-label="Bỏ theo dõi MacBook Pro 14 M1 Pro 2021">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 21s-6.7-4.35-9.33-8.11C.9 10.6 1.72 7.34 4.4 6.2c1.74-.74 3.72-.1 4.95 1.5L12 10.4l2.65-2.7c1.23-1.6 3.21-2.24 4.95-1.5 2.7 1.14 3.53 4.4 1.73 6.69C18.7 16.65 12 21 12 21Z" />
+                </svg>
+              </button>
+              <a class="media" href="auction-detail.html">
+                <img src="images/mbp-side.jpg" alt="MacBook Pro 14 M1 Pro 2021" width="904" height="840" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">MacBook Pro 14 M1 Pro 2021</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">26.400.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="countdown-time" data-sec="70200">--:--:--</span>
+                    <span class="price-label">Kết thúc sau</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="MacBook Pro 14 M1 Pro 2021">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card watch-card">
+              <button type="button" class="watch-heart" aria-pressed="true" aria-label="Bỏ theo dõi MacBook Air 15 M2 2023">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 21s-6.7-4.35-9.33-8.11C.9 10.6 1.72 7.34 4.4 6.2c1.74-.74 3.72-.1 4.95 1.5L12 10.4l2.65-2.7c1.23-1.6 3.21-2.24 4.95-1.5 2.7 1.14 3.53 4.4 1.73 6.69C18.7 16.65 12 21 12 21Z" />
+                </svg>
+              </button>
+              <a class="media" href="auction-detail.html">
+                <img src="images/mbp-front.jpg" alt="MacBook Air 15 M2 2023" width="1600" height="1067" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">MacBook Air 15 M2 2023</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">24.600.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="countdown-time" data-sec="41000">--:--:--</span>
+                    <span class="price-label">Kết thúc sau</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="MacBook Air 15 M2 2023">Đặt giá</button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- ═══ PANEL: ĐÁNH GIÁ ═══ -->
+        <section class="tab-panel" id="panel-danhgia" role="tabpanel" aria-labelledby="tab-danhgia" hidden>
+          <p class="tab-note">23 đánh giá từ các phiên đã thắng. Hiển thị 3 gần nhất.</p>
+          <div class="review-list">
+            <article class="review-card">
+              <div class="review-head">
+                <span class="review-avatar" aria-hidden="true">TS</span>
+                <span class="review-by">
+                  <span class="review-name">TechStore VN</span>
+                  <span class="review-meta">15/09/2026 · Phiên “MacBook Pro 14 M3 2023”</span>
+                </span>
+                <span class="review-stars" aria-label="5 trên 5 sao">
+                  <span class="r5">★</span><span class="r5">★</span><span class="r5">★</span><span class="r5">★</span><span class="r5">★</span>
+                </span>
+              </div>
+              <p class="review-text">“Người mua uy tín, thanh toán nhanh.”</p>
+            </article>
+
+            <article class="review-card">
+              <div class="review-head">
+                <span class="review-avatar" aria-hidden="true">CP</span>
+                <span class="review-by">
+                  <span class="review-name">CellPhoneX</span>
+                  <span class="review-meta">12/09/2026 · Phiên “iPhone 14 Pro”</span>
+                </span>
+                <span class="review-stars" aria-label="4 trên 5 sao">
+                  <span class="r5">★</span><span class="r5">★</span><span class="r5">★</span><span class="r5">★</span><span class="r0">★</span>
+                </span>
+              </div>
+              <p class="review-text">“Giao dịch ổn. Hơi chậm phản hồi tin nhắn.”</p>
+            </article>
+
+            <article class="review-card">
+              <div class="review-head">
+                <span class="review-avatar" aria-hidden="true">AK</span>
+                <span class="review-by">
+                  <span class="review-name">Anh Khoa</span>
+                  <span class="review-meta">28/08/2026 · Phiên “iPad Pro 11 M2”</span>
+                </span>
+                <span class="review-stars" aria-label="5 trên 5 sao">
+                  <span class="r5">★</span><span class="r5">★</span><span class="r5">★</span><span class="r5">★</span><span class="r5">★</span>
+                </span>
+              </div>
+              <p class="review-text">“Thanh toán sớm. Nhận hàng đúng hẹn.”</p>
+            </article>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <span>© 2026 AuctionHub JSC. Phiên đấu giá minh họa cho bản prototype.</span>
+        <a href="index.html">Quay về trang chủ</a>
+      </div>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      (function () {
+        var toastEl = document.getElementById("toast");
+        var toastTimer = null;
+        function showToast(msg) {
+          toastEl.textContent = msg;
+          toastEl.classList.add("show");
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 2600);
+        }
+
+        /* ── Tabs ── */
+        var tabs = Array.prototype.slice.call(document.querySelectorAll(".tabs [role='tab']"));
+        var panels = Array.prototype.slice.call(document.querySelectorAll("[role='tabpanel']"));
+        function activateTab(name) {
+          tabs.forEach(function (t) {
+            var on = t.getAttribute("data-panel") === name;
+            t.setAttribute("aria-selected", String(on));
+            t.setAttribute("tabindex", on ? "0" : "-1");
+          });
+          panels.forEach(function (p) {
+            p.hidden = p.id !== "panel-" + name;
+          });
+        }
+        tabs.forEach(function (t) {
+          t.addEventListener("click", function () {
+            activateTab(t.getAttribute("data-panel"));
+          });
+        });
+
+        /* Rating link mở tab Đánh giá */
+        document.getElementById("rating-link").addEventListener("click", function (e) {
+          e.preventDefault();
+          activateTab("danhgia");
+        });
+
+        /* Đổi ảnh đại diện và chỉnh sửa hồ sơ */
+        document.getElementById("avatar-edit").addEventListener("click", function () {
+          showToast("Đang mở bộ chọn ảnh đại diện.");
+        });
+        document.getElementById("btn-edit").addEventListener("click", function () {
+          showToast("Đang mở trang chỉnh sửa hồ sơ.");
+        });
+
+        /* ── Đặt giá trên lưới theo dõi ── */
+        document.querySelectorAll("[data-open]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            showToast("Đang mở phiên đấu giá “" + btn.getAttribute("data-open") + "”.");
+          });
+        });
+
+        /* ── Thao tác trên đơn đã thắng ── */
+        document.querySelectorAll(".won-line [data-order]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var order = btn.getAttribute("data-order");
+            var act = btn.getAttribute("data-act");
+            var msg =
+              act === "pay" ? "Đang mở trang thanh toán cho đơn #" + order + "." :
+              act === "ship" ? "Đang mở chi tiết đơn #" + order + "." :
+              "Đang mở form đánh giá cho đơn #" + order + ".";
+            showToast(msg);
+          });
+        });
+
+        /* ── Bỏ theo dõi trên lưới theo dõi ── */
+        var watchCount = 8;
+        var watchTab = document.getElementById("tab-dinding");
+        var watchNote = document.getElementById("watch-note");
+        document.querySelectorAll(".watch-heart").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var card = btn.closest(".watch-card");
+            var title = "phiên này";
+            if (card) {
+              var link = card.querySelector(".card-title a");
+              if (link) title = link.textContent;
+              card.hidden = true;
+              watchCount -= 1;
+            }
+            var tcount = watchTab.querySelector(".tcount");
+            if (tcount) tcount.textContent = String(watchCount);
+            if (watchNote) watchNote.textContent = watchCount + " phiên bạn đang theo dõi. Bạn sẽ nhận thông báo 30 phút trước khi phiên kết thúc.";
+            showToast("Đã bỏ theo dõi “" + title + "”.");
+          });
+        });
+
+        /* ── Countdown ── */
+        function pad2(n) { return n < 10 ? "0" + n : String(n); }
+        function fmt(sec) {
+          var h = Math.floor(sec / 3600);
+          var m = Math.floor((sec % 3600) / 60);
+          var s = sec % 60;
+          return pad2(h) + ":" + pad2(m) + ":" + pad2(s);
+        }
+        function fmtMS(sec) {
+          var m = Math.floor(sec / 60);
+          var s = sec % 60;
+          return pad2(m) + ":" + pad2(s);
+        }
+        var ticking = Array.prototype.slice.call(document.querySelectorAll(".countdown, .countdown-time, .pay-time"));
+        var ends = ticking.map(function (el) {
+          return Date.now() + parseInt(el.getAttribute("data-sec"), 10) * 1000;
+        });
+        function tick() {
+          var now = Date.now();
+          ticking.forEach(function (el, i) {
+            var left = Math.max(0, Math.round((ends[i] - now) / 1000));
+            el.textContent = left > 0 ? (el.classList.contains("pay-time") ? fmtMS(left) : fmt(left)) : "Đã kết thúc";
+          });
+        }
+        tick();
+        setInterval(tick, 1000);
+      })();
+    </script>
+  
+
+    <script data-micro-interactions="js">
+      (function () {
+        var lazy = document.querySelectorAll('img[loading="lazy"]');
+        for (var i = 0; i < lazy.length; i++) {
+          (function (img) {
+            if (img.complete) { img.classList.add("micro-loaded"); return; }
+            img.addEventListener("load", function () {
+              img.classList.add("micro-loaded");
+            });
+          })(lazy[i]);
+        }
+
+        var bar = document.getElementById("scroll-progress");
+        if (!bar) return;
+        function paint() {
+          var doc = document.documentElement;
+          var max = doc.scrollHeight - window.innerHeight;
+          var p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+          bar.style.setProperty("--micro-prog", p.toFixed(4));
+        }
+        window.addEventListener("scroll", paint, { passive: true });
+        window.addEventListener("resize", paint);
+        paint();
+      })();
+    </script>
+
+  </body>
+</html>

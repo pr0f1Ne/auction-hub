@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kiểm tra email | AuctionHub</title>
+    <meta
+      name="description"
+      content="Xác nhận địa chỉ email để tạo tài khoản AuctionHub. Link xác nhận được gửi đến minh.tran@gmail.com và hết hạn sau 24h."
+    />
+
+    <style>
+      /* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio.
+         Put this @layer first; product CSS outside the layer always wins. */
+      @layer od-layout {
+        :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+
+        /* containers */
+        .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+        .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+        .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+        .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+        .od-fill    { flex: 1 1 0; min-width: 0; }
+        .od-fixed   { flex: none; }
+        .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+
+        /* stacked information: each piece is its own line — never sibling inline spans */
+        .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+        :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+        .od-tile { display: grid; grid-template-rows: auto 1fr; }
+        :where(.od-tile) > :where(*) { display: block; }
+
+        /* media keeps its intrinsic ratio by default; never a distorted or cropped
+           cover by accident. height:auto lets the ratio win over an <img height="…">
+           attribute. Cropping to a uniform box is an explicit opt-in: set --od-ratio
+           AND add .od-media-cover together (per the core rule, only where a crop is
+           deliberate — tile thumbs, decorative fills — never on full-frame content). */
+        .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+        .od-media-cover { object-fit: cover; }
+
+        /* data text only — authored copy is rewritten to its budget instead */
+        .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+        .od-clamp-2 { -webkit-line-clamp: 2; }
+        .od-clamp-3 { -webkit-line-clamp: 3; }
+        .od-lines-2 { min-height: calc(2 * 1.4em); }   /* block-level reservation for a shared baseline */
+        .od-nowrap  { white-space: nowrap; }           /* 数字+单位 · 价格+起 · 日期+星期 */
+        .od-keep    { word-break: keep-all; overflow-wrap: anywhere; } /* CJK labels break at spaces / <wbr> first */
+
+        /* screen skeleton (optional): bars take their own space, the middle scrolls — no padding guessed for chrome */
+        .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+        .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+
+        /* horizontal rail: the next item peeks at the edge; trailing room survives overflow */
+        .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+                   padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+        .od-rail::-webkit-scrollbar { display: none; }
+        :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+        :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+
+        .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+        .od-touch  { min-width: 44px; min-height: 44px; }
+      }
+      /* /OD-LAYOUT-PRIMITIVES v1 */
+
+      /* ─── Design tokens ─────────────────────────────────────────────
+         Shared Stripe schema, resolved per the AuctionHub brief:
+         accent #635BFF, background #FFFFFF / #FAFAFA, charcoal text
+         #1A1A1A. Tokens referenced only through var(--name). */
+      :root {
+        --bg:           #ffffff;
+        --surface:      #ffffff;
+        --surface-warm: #fafafa;
+
+        --fg:    #1a1a1a;
+        --fg-2:  #374151;
+        --muted: #6b7280;
+        --meta:  var(--muted);
+
+        --border:      #e5e7eb;
+        --border-soft: var(--border);
+
+        --accent:    #635bff;
+        --accent-on: #ffffff;
+
+        --accent-hover:  #5851df;
+        --accent-active: #4f46d6;
+
+        --success:      #15be53;
+        --success-text: #0b7a44;
+        --success-bg:   #eaf7f1;
+        --warn:         #9b6829;
+        --danger:       #ea2261;
+        --danger-text:  #b4233e;
+        --danger-bg:    #fbeeef;
+
+        --on-dark:        #ffffff;
+        --on-dark-muted:  rgba(255, 255, 255, 0.72);
+        --dark-bg:        #1a1a1a;
+        --dark-bg-2:      #111113;
+        --dark-border:    rgba(255, 255, 255, 0.10);
+
+        --font-display:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-body:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-mono:
+          "SourceCodePro", "Source Code Pro",
+          ui-monospace, "SF Mono", "JetBrains Mono",
+          Menlo, Monaco, Consolas, monospace;
+
+        --text-xs:   12px;
+        --text-sm:   14px;
+        --text-base: 17px;
+        --text-lg:   19px;
+        --text-xl:   24px;
+        --text-2xl:  32px;
+        --text-3xl:  46px;
+        --text-4xl:  64px;
+
+        --leading-body:     1.55;
+        --leading-tight:    1.1;
+        --tracking-display: -0.02em;
+
+        --space-1:  4px;
+        --space-2:  8px;
+        --space-3:  12px;
+        --space-4:  16px;
+        --space-5:  20px;
+        --space-6:  24px;
+        --space-8:  32px;
+        --space-12: 48px;
+
+        --section-y-desktop: 112px;
+        --section-y-tablet:  72px;
+        --section-y-phone:   48px;
+
+        --radius-sm: 4px;
+        --radius-md: 6px;
+        --radius-lg: 8px;
+
+        --elev-flat:   none;
+        --elev-ring:   0 0 0 1px var(--border);
+        --elev-soft:
+          rgba(50, 50, 93, 0.06) 0px 6px 18px -6px,
+          rgba(0,   0,  0, 0.06) 0px 3px 8px  -4px;
+        --elev-raised:
+          rgba(50, 50, 93, 0.16) 0px 24px 40px -28px,
+          rgba(0,   0,  0, 0.10) 0px 16px 32px -18px;
+
+        --motion-fast:   150ms;
+        --motion-base:   200ms;
+        --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+        --container-max:            1080px;
+        --container-gutter-desktop: 32px;
+        --container-gutter-tablet:  24px;
+        --container-gutter-phone:   20px;
+
+        /* auth page: focus ring in the primary colour */
+        --ring-accent: rgba(99, 91, 255, 0.18);
+      }
+
+      /* ─── Base ─────────────────────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--font-body);
+        font-size: var(--text-base);
+        line-height: var(--leading-body);
+        font-weight: 400;
+        font-feature-settings: "ss01";
+        -webkit-font-smoothing: antialiased;
+      }
+      strong { font-weight: 600; }
+      a {
+        color: var(--accent);
+        text-decoration: none;
+        font-feature-settings: "ss01";
+      }
+      a:hover { text-decoration: underline; }
+      a:focus-visible,
+      button:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      h1, h2 {
+        font-family: var(--font-display);
+        font-weight: 300;
+        line-height: var(--leading-tight);
+        letter-spacing: var(--tracking-display);
+        color: var(--fg);
+        margin: 0;
+      }
+      p { margin: 0; }
+
+      /* ─── Split screen shell ───────────────────────────────────── */
+      .auth-shell {
+        display: grid;
+        grid-template-columns: minmax(280px, 40fr) minmax(0, 60fr);
+        min-height: 100vh;
+      }
+
+      /* ─── Left brand panel ─────────────────────────────────────── */
+      .brand-panel {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        padding: clamp(32px, 5vw, 64px);
+        gap: var(--space-8);
+        background:
+          radial-gradient(120% 90% at -10% -10%, rgba(99, 91, 255, 0.16), rgba(99, 91, 255, 0) 55%),
+          linear-gradient(165deg, #eeecff 0%, #ffffff 70%);
+      }
+      .brand {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 2px;
+        align-self: flex-start;
+        font-family: var(--font-display);
+        font-feature-settings: "ss01";
+        font-size: 19px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--fg);
+        text-decoration: none;
+      }
+      .brand:hover { color: var(--fg); text-decoration: none; }
+      .brand-dot { color: var(--accent); }
+
+      .panel-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: var(--space-8);
+      }
+      .panel-copy {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+        align-items: flex-start;
+      }
+      .panel-copy h1 {
+        font-size: clamp(26px, 2.8vw, 40px);
+        max-width: 14ch;
+      }
+      .panel-copy p {
+        color: var(--muted);
+        font-size: var(--text-base);
+        max-width: 32ch;
+      }
+
+      .trust-badges {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        margin-block-start: auto;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-5);
+      }
+      .trust-badge {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-3);
+      }
+      .badge-icon {
+        flex: none;
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        background: var(--surface);
+        border: 1px solid rgba(99, 91, 255, 0.18);
+        color: var(--accent);
+        box-shadow: var(--elev-soft);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .badge-icon svg { width: 22px; height: 22px; }
+      .trust-badge strong {
+        display: block;
+        font-weight: 600;
+        color: var(--fg);
+        line-height: var(--leading-tight);
+      }
+      .trust-badge .badge-caption {
+        display: block;
+        margin-block-start: 2px;
+        font-size: var(--text-sm);
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      /* ─── Right form panel ─────────────────────────────────────── */
+      .form-panel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: clamp(28px, 6vw, 72px) clamp(20px, 5vw, 48px);
+        background: var(--surface);
+      }
+      .back-link {
+        align-self: flex-start;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-block-end: var(--space-8);
+        font-size: var(--text-sm);
+        color: var(--muted);
+      }
+      .back-link:hover { color: var(--fg-2); }
+      .back-link svg { width: 16px; height: 16px; }
+
+      /* ─── Verify card ──────────────────────────────────────────── */
+      .verify-card {
+        width: 100%;
+        max-width: 420px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: var(--space-2);
+        padding-block: var(--space-4);
+      }
+      .verify-card .mail-icon {
+        width: 56px;
+        height: 56px;
+        margin-block-end: var(--space-3);
+        border-radius: 50%;
+        background: #eceaff;
+        color: var(--accent);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .verify-card .mail-icon svg { width: 28px; height: 28px; }
+      .verify-card h1 { font-size: clamp(26px, 4vw, 32px); }
+      .verify-note {
+        color: var(--muted);
+        max-width: 36ch;
+        margin-block-end: var(--space-5);
+      }
+      .verify-note strong { color: var(--fg-2); font-weight: 600; }
+      .verify-card .btn-primary { max-width: 260px; }
+
+      .resend-line {
+        margin-top: var(--space-6);
+        font-size: var(--text-sm);
+        color: var(--muted);
+      }
+      .resend-link {
+        border: 0;
+        background: none;
+        padding: 0;
+        color: var(--accent);
+        font: inherit;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      .resend-link:hover:not(:disabled) { text-decoration: underline; }
+      .resend-link:disabled { color: var(--muted); cursor: default; text-decoration: none; }
+
+      /* ─── Responsive ───────────────────────────────────────────── */
+      @media (max-width: 1024px) {
+        .brand-panel { padding: clamp(28px, 4vw, 48px); }
+        .trust-badges { gap: var(--space-4); }
+      }
+
+      @media (max-width: 768px) {
+        .auth-shell { grid-template-columns: 1fr; }
+        .brand-panel {
+          padding: var(--space-5) var(--space-6) var(--space-6);
+          gap: var(--space-3);
+          background:
+            radial-gradient(120% 120% at -15% -20%, rgba(99, 91, 255, 0.16), rgba(99, 91, 255, 0) 55%),
+            linear-gradient(165deg, #eeecff 0%, #ffffff 70%);
+        }
+        .panel-body {
+          flex: none;
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+          gap: var(--space-3);
+        }
+        .panel-copy { gap: var(--space-1); }
+        .panel-copy h1 { font-size: 22px; }
+        .panel-copy p { display: none; }
+        .trust-badges { display: none; }
+        .form-panel { justify-content: flex-start; padding-block: var(--space-8) var(--space-12); }
+        .back-link { margin-block-end: var(--space-5); }
+      }
+    </style>
+  
+
+    <!-- OD MICRO-INTERACTIONS START -->
+    <style data-micro-interactions="css">
+      /* Cross-page micro-interactions: focus ring, link slide underline,
+         button press, lazy image fade, dialog rise, scroll progress. */
+
+      :focus-visible {
+        outline: 2px solid var(--accent, #635bff);
+        outline-offset: 4px;
+        transition: outline-color 120ms ease;
+      }
+
+      /* Unify link underline into one animated system. !important suppresses
+         per-page text-decoration so only the slide underline renders; the
+         element-level background-image only affects painting, never layout. */
+      a {
+        text-decoration: none !important;
+        background-image: linear-gradient(currentColor, currentColor);
+        background-repeat: no-repeat;
+        background-position: 0 100%;
+        background-size: 0 1px;
+        background-origin: border-box;
+        transition:
+          background-size 150ms cubic-bezier(0.2, 0, 0, 1),
+          color 150ms ease,
+          background-color 150ms ease,
+          border-color 150ms ease,
+          opacity 150ms ease,
+          transform 150ms ease;
+      }
+      a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover {
+        background-size: 100% 1px;
+      }
+
+      button:not(.pwd-toggle):active,
+      .btn:active,
+      [role="button"]:active {
+        transform: scale(0.98);
+      }
+
+      @keyframes micro-rise {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      [role="dialog"] > *,
+      .drawer-inner > *,
+      .drawer-panel > * {
+        animation: micro-rise 260ms cubic-bezier(0.2, 0, 0, 1) both;
+      }
+      [role="dialog"] > * + *,
+      .drawer-inner > * + *,
+      .drawer-panel > * + * {
+        animation-delay: 50ms;
+      }
+
+      img[loading="lazy"] {
+        opacity: 0.8;
+        transition: opacity 260ms ease;
+      }
+      img[loading="lazy"].micro-loaded { opacity: 1; }
+
+      #scroll-progress {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%;
+        height: 2px;
+        transform: scaleX(var(--micro-prog, 0));
+        transform-origin: left center;
+        background: var(--accent, #635bff);
+        z-index: 1000;
+        pointer-events: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        a { background-image: none; }
+        a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover { background-size: 0 1px; }
+        button:not(.pwd-toggle):active,
+        .btn:active,
+        [role="button"]:active { transform: none; }
+        [role="dialog"] > *,
+        .drawer-inner > *,
+        .drawer-panel > * { animation: none; }
+        img[loading="lazy"] { opacity: 1; transition: none; }
+        #scroll-progress { transform: none; }
+      }
+    </style>
+    <!-- /OD MICRO-INTERACTIONS -->
+
+  </head>
+  <body>
+    <div class="auth-shell">
+      <!-- Left brand panel -->
+      <aside class="brand-panel">
+        <a class="brand" href="index.html" aria-label="AuctionHub trang chủ">
+          AuctionHub<span class="brand-dot">.</span>
+        </a>
+
+        <div class="panel-body">
+          <div class="panel-copy">
+            <h1>Đấu giá an toàn, giao dịch tin cậy</h1>
+            <p>
+              Tham gia hàng nghìn phiên đấu giá thiết bị công nghệ được kiểm định
+              kỹ lưỡng bởi đội ngũ AuctionHub.
+            </p>
+          </div>
+
+          <ul class="trust-badges">
+            <li class="trust-badge">
+              <span class="badge-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6l7-3z" />
+                  <path d="M9 12l2 2 4-4" />
+                </svg>
+              </span>
+              <span>
+                <strong>Escrow Protection</strong>
+                <span class="badge-caption">Tiền được giữ an toàn đến khi hàng về tay bạn.</span>
+              </span>
+            </li>
+            <li class="trust-badge">
+              <span class="badge-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 21c.9-3.5 4-5.5 8-5.5 1.4 0 2.6.2 3.6.7" />
+                  <path d="M16.5 16.5l2 2 3.5-3.5" />
+                </svg>
+              </span>
+              <span>
+                <strong>Verified Sellers</strong>
+                <span class="badge-caption">Người bán được xác minh danh tính và xếp hạng.</span>
+              </span>
+            </li>
+            <li class="trust-badge">
+              <span class="badge-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 12a9 9 0 1 0 3-6.7" />
+                  <path d="M3 4v5h5" />
+                  <path d="M12 8v4l3 2" />
+                </svg>
+              </span>
+              <span>
+                <strong>Buyer Guarantee</strong>
+                <span class="badge-caption">Hoàn tiền nếu sản phẩm không đúng mô tả.</span>
+              </span>
+            </li>
+          </ul>
+        </div>
+      </aside>
+
+      <!-- Right form panel -->
+      <main class="form-panel">
+        <a class="back-link" href="index.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M19 12H5M11 18l-6-6 6-6" />
+          </svg>
+          Quay về trang chủ
+        </a>
+
+        <section class="verify-card" aria-labelledby="verify-title">
+          <span class="mail-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6Z" />
+              <path d="m2 7 10 6L22 7" />
+              <path d="m17 19 2 2 4-4" />
+            </svg>
+          </span>
+          <h1 id="verify-title">Kiểm tra email của bạn</h1>
+          <p class="verify-note">
+            Chúng tôi đã gửi link xác nhận đến <strong>minh.tran@gmail.com</strong>.
+            Link hết hạn sau 24h.
+          </p>
+          <a class="btn-primary" href="login.html">Mở hộp thư</a>
+
+          <p class="resend-line">
+            <button class="resend-link" id="resend-link" type="button" disabled aria-live="polite">
+              <span id="resend-prefix">Không nhận được? Gửi lại sau </span><span class="tnum" id="resend-count">60</span><span id="resend-suffix">s</span>
+            </button>
+          </p>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var resendLink = document.getElementById("resend-link");
+        var prefix = document.getElementById("resend-prefix");
+        var countEl = document.getElementById("resend-count");
+        var suffix = document.getElementById("resend-suffix");
+
+        var RESEND_SECONDS = 60;
+        var timer = null;
+
+        var startCountdown = function () {
+          var remaining = RESEND_SECONDS;
+          resendLink.disabled = true;
+          prefix.textContent = "Không nhận được? Gửi lại sau ";
+          countEl.style.display = "";
+          suffix.style.display = "";
+          countEl.textContent = String(remaining);
+          clearInterval(timer);
+          timer = setInterval(function () {
+            remaining -= 1;
+            if (remaining <= 0) {
+              clearInterval(timer);
+              resendLink.disabled = false;
+              countEl.style.display = "none";
+              suffix.style.display = "none";
+              prefix.textContent = "Gửi lại link ngay";
+              return;
+            }
+            countEl.textContent = String(remaining);
+          }, 1000);
+        };
+
+        resendLink.addEventListener("click", startCountdown);
+        startCountdown();
+      })();
+    </script>
+  
+
+    <script data-micro-interactions="js">
+      (function () {
+        var lazy = document.querySelectorAll('img[loading="lazy"]');
+        for (var i = 0; i < lazy.length; i++) {
+          (function (img) {
+            if (img.complete) { img.classList.add("micro-loaded"); return; }
+            img.addEventListener("load", function () {
+              img.classList.add("micro-loaded");
+            });
+          })(lazy[i]);
+        }
+
+        var bar = document.getElementById("scroll-progress");
+        if (!bar) return;
+        function paint() {
+          var doc = document.documentElement;
+          var max = doc.scrollHeight - window.innerHeight;
+          var p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+          bar.style.setProperty("--micro-prog", p.toFixed(4));
+        }
+        window.addEventListener("scroll", paint, { passive: true });
+        window.addEventListener("resize", paint);
+        paint();
+      })();
+    </script>
+
+  </body>
+</html>

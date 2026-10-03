@@ -1,0 +1,910 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AuctionHub | Tổng quan người bán</title>
+    <meta
+      name="description"
+      content="Bảng điều khiển người bán AuctionHub (trạng thái tải): khung xương đang tải dữ liệu tổng quan trong 30 ngày qua."
+    />
+
+    <style>
+      /* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio.
+         Put this @layer first; product CSS outside the layer always wins. */
+      @layer od-layout {
+        :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+
+        /* containers */
+        .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+        .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+        .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+        .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+        .od-fill    { flex: 1 1 0; min-width: 0; }
+        .od-fixed   { flex: none; }
+        .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+
+        /* stacked information: each piece is its own line — never sibling inline spans */
+        .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+        :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+        .od-tile { display: grid; grid-template-rows: auto 1fr; }
+        :where(.od-tile) > :where(*) { display: block; }
+
+        /* media keeps its intrinsic ratio by default; never a distorted or cropped
+           cover by accident. height:auto lets the ratio win over an <img height="…">
+           attribute. Cropping to a uniform box is an explicit opt-in: set --od-ratio
+           AND add .od-media-cover together (per the core rule, only where a crop is
+           deliberate — tile thumbs, decorative fills — never on full-frame content). */
+        .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+        .od-media-cover { object-fit: cover; }
+
+        /* data text only — authored copy is rewritten to its budget instead */
+        .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+        .od-clamp-2 { -webkit-line-clamp: 2; }
+        .od-clamp-3 { -webkit-line-clamp: 3; }
+        .od-lines-2 { min-height: calc(2 * 1.4em); }   /* block-level reservation for a shared baseline */
+        .od-nowrap  { white-space: nowrap; }           /* 数字+单位 · 价格+起 · 日期+星期 */
+        .od-keep    { word-break: keep-all; overflow-wrap: anywhere; } /* CJK labels break at spaces / <wbr> first */
+
+        /* screen skeleton (optional): bars take their own space, the middle scrolls — no padding guessed for chrome */
+        .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+        .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+
+        /* horizontal rail: the next item peeks at the edge; trailing room survives overflow */
+        .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+                   padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+        .od-rail::-webkit-scrollbar { display: none; }
+        :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+        :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+
+        .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+        .od-touch  { min-width: 44px; min-height: 44px; }
+      }
+      /* /OD-LAYOUT-PRIMITIVES v1 */
+
+      /* ─── Design tokens ─────────────────────────────────────────── */
+      :root {
+        --bg:           #ffffff;
+        --surface:      #ffffff;
+        --surface-warm: #fafafa;
+        --surface-side: #f9fafb;
+
+        --fg:    #1a1a1a;
+        --fg-2:  #374151;
+        --muted: #6b7280;
+        --meta:  var(--muted);
+
+        --border:      #e5e7eb;
+        --border-soft: var(--border);
+
+        --accent:    #635bff;
+        --accent-on: #ffffff;
+
+        --accent-hover:  #5851df;
+        --accent-active: #4f46d6;
+
+        --success:      #15be53;
+        --success-text: #0b7a44;
+        --success-bg:   #eaf7f1;
+        --warn:         #9b6829;
+        --danger:       #ea2261;
+        --danger-text:  #b4233e;
+        --danger-bg:    #fbeeef;
+        --urgent:       #ef4444;
+
+        --amber-text: #b45309;
+        --amber-bg:   #fef3c7;
+        --blue-text:  #1d4ed8;
+        --blue-bg:    #eff6ff;
+        --gray-text:  #6b7280;
+        --gray-bg:    #f3f4f6;
+
+        --on-dark:       #ffffff;
+        --on-dark-muted: rgba(255, 255, 255, 0.72);
+        --dark-bg:       #1a1a1a;
+        --dark-bg-2:     #111113;
+
+        --font-display:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-body:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-mono:
+          "SourceCodePro", "Source Code Pro",
+          ui-monospace, "SF Mono", "JetBrains Mono",
+          Menlo, Monaco, Consolas, monospace;
+
+        --text-xs:   12px;
+        --text-sm:   14px;
+        --text-base: 16px;
+        --text-lg:   18px;
+        --text-xl:   22px;
+        --text-2xl:  28px;
+
+        --leading-body:     1.55;
+        --leading-tight:    1.1;
+        --tracking-display: -0.02em;
+
+        --space-1:  4px;
+        --space-2:  8px;
+        --space-3:  12px;
+        --space-4:  16px;
+        --space-5:  20px;
+        --space-6:  24px;
+        --space-8:  32px;
+        --space-12: 48px;
+
+        --radius-sm: 4px;
+        --radius-md: 6px;
+        --radius-lg: 8px;
+
+        --elev-flat:   none;
+        --elev-ring:   0 0 0 1px var(--border);
+        --elev-soft:
+          rgba(50, 50, 93, 0.06) 0px 6px 18px -6px,
+          rgba(0,   0,  0, 0.06) 0px 3px 8px  -4px;
+
+        --motion-fast:   150ms;
+        --motion-base:   200ms;
+        --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+        --sidebar-w: 240px;
+        --content-pad: 32px;
+
+        --focus-ring: 0 0 0 3px rgba(99, 91, 255, 0.28);
+      }
+
+      /* ─── Base ──────────────────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--font-body);
+        font-size: var(--text-base);
+        line-height: var(--leading-body);
+        font-weight: 400;
+        font-feature-settings: "ss01";
+        -webkit-font-smoothing: antialiased;
+      }
+      img { max-width: 100%; }
+      strong { font-weight: 600; }
+      a { color: var(--accent); text-decoration: none; }
+      button { font-family: inherit; }
+
+      .tnum { font-feature-settings: "tnum", "ss01"; }
+      .mono { font-family: var(--font-mono); font-feature-settings: "tnum"; }
+
+      :focus-visible {
+        outline: none;
+        box-shadow: var(--focus-ring);
+        border-radius: var(--radius-sm);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+        }
+      }
+
+      /* ─── App shell ─────────────────────────────────────────── */
+      .app { display: flex; min-height: 100vh; }
+
+      /* Sidebar */
+      .sidebar {
+        flex: none;
+        width: var(--sidebar-w);
+        background: var(--surface-side);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+      }
+
+      .side-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 20px 20px 16px;
+        font-weight: 600;
+        font-size: var(--text-lg);
+        letter-spacing: var(--tracking-display);
+      }
+      .side-brand svg { display: block; }
+      .side-brand .mark {
+        width: 28px; height: 28px;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 14px;
+        letter-spacing: 0;
+      }
+
+      .side-nav { flex: 1; padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+      .side-nav a {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 12px;
+        border-radius: 6px;
+        color: var(--fg-2);
+        font-size: var(--text-sm);
+        line-height: 1.2;
+        transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+      }
+      .side-nav a:hover { background: var(--surface-warm); color: var(--fg); }
+      .side-nav a[aria-current="page"] {
+        background: #eceaff;
+        color: var(--accent-active);
+        font-weight: 600;
+      }
+      .side-nav svg { flex: none; width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+      .side-nav a .count {
+        margin-left: auto;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+        background: var(--surface-warm);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 1px 8px;
+      }
+      .side-nav a[aria-current="page"] .count { color: var(--accent-active); background: #fff; }
+
+      .side-user {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--border);
+      }
+      .side-user .avatar {
+        flex: none;
+        width: 34px; height: 34px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .side-user .usermeta { min-width: 0; }
+      .side-user .usermeta b { display: block; font-size: 13px; line-height: 1.3; color: var(--fg); }
+      .side-user .badge {
+        display: inline-block;
+        margin-top: 2px;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--accent-active);
+        background: #eceaff;
+        border-radius: 999px;
+        padding: 1px 8px;
+        line-height: 1.5;
+      }
+
+      /* Main */
+      .main { flex: 1; min-width: 0; }
+      .content { max-width: 1180px; margin-inline: auto; padding: 28px var(--content-pad) 56px; }
+
+      .page-head { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+      .page-head h1 { font-size: var(--text-xl); font-weight: 600; letter-spacing: var(--tracking-display); line-height: 1.2; margin: 0; }
+      .page-head .sub { margin-top: 4px; color: var(--muted); font-size: var(--text-sm); }
+      .head-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border-radius: 6px;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        line-height: 1.2;
+        padding: 9px 16px;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+      }
+      .btn-primary { background: var(--accent); color: #fff; }
+      .btn-primary:hover { background: var(--accent-hover); }
+      .btn-primary:active { background: var(--accent-active); }
+      .btn-ghost { background: #fff; border-color: var(--border); color: var(--fg-2); }
+      .btn-ghost:hover { border-color: #d1d5db; color: var(--fg); }
+      .btn[disabled] { opacity: 0.6; cursor: default; pointer-events: none; }
+
+      /* KPI cards */
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .kpi {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+      }
+      .kpi .label {
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+      .kpi .delta { margin-top: 10px; }
+
+      /* Cards */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+      }
+      .card-head {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 20px 24px 12px;
+        flex-wrap: wrap;
+      }
+      .card-head h2 { font-size: var(--text-lg); font-weight: 600; letter-spacing: var(--tracking-display); margin: 0; line-height: 1.2; }
+      .card-head .card-sub { margin-top: 2px; color: var(--muted); font-size: 13px; }
+      .card-extra { margin-left: auto; }
+
+      .link-muted { color: var(--accent); font-size: var(--text-sm); font-weight: 500; }
+
+      /* Layout columns */
+      .dash-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+      .col-left { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+      .col-right { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+      /* Chart */
+      .chart-body { padding: 8px 24px 20px; }
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        background: #fff;
+      }
+      .seg button {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        padding: 7px 14px;
+        font-size: 13px;
+        font-family: inherit;
+        color: var(--fg-2);
+        cursor: pointer;
+        border-right: 1px solid var(--border);
+      }
+      .seg button:last-child { border-right: 0; }
+      .seg button[aria-pressed="true"] { background: #eceaff; color: var(--accent-active); font-weight: 600; }
+
+      /* Table */
+      .tbl-scroll { overflow-x: auto; }
+      .tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+      .tbl thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--surface-warm);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        text-align: left;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      .tbl tbody td { padding: 12px 16px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; }
+      .tbl tbody tr:last-child td { border-bottom: 0; }
+
+      .mini-note {
+        margin-top: 2px;
+        padding: 14px 16px;
+        border-radius: var(--radius-md);
+        background: var(--surface-warm);
+        border: 1px solid var(--border);
+        font-size: 13px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      /* ─── Skeleton (shimmer) ───────────────────────────────────── */
+      @keyframes micro-shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
+      .sk { position: relative; }
+      .sk::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background-image: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
+        background-size: 200% 100%;
+        animation: micro-shimmer 2s linear infinite;
+        pointer-events: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .sk::before { animation: none; }
+        .sk { opacity: 0.55; }
+      }
+
+      .sk-bar {
+        display: block;
+        background: var(--border);
+        border-radius: 4px;
+      }
+      .kpi .sk-bar.value { height: 24px; width: 62%; margin: 4px 0 2px; }
+      .kpi .sk-bar.delta { height: 12px; width: 46%; margin-top: 14px; }
+
+      .sk-chart {
+        display: grid;
+        gap: 12px;
+        justify-items: center;
+        padding: 20px 0 24px;
+      }
+      .sk-chart .sk-rect {
+        width: 100%;
+        height: 232px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background-color: transparent;
+      }
+      .sk-chart p { color: var(--muted); font-size: 13px; margin: 0; }
+
+      .sk-row .sk-thumb {
+        flex: none;
+        width: 48px; height: 48px;
+        border-radius: 6px;
+      }
+      .sk-row .sk-line { height: 12px; border-radius: 4px; }
+      .sk-row .sk-line.w12 { width: 12%; }
+      .sk-row .sk-line.w20 { width: 20%; }
+      .sk-row .sk-line.w28 { width: 28%; }
+      .sk-row .sk-line.w34 { width: 34%; }
+      .sk-row .sk-line.w48 { width: 48%; }
+      .sk-row .sk-line.w64 { width: 64%; }
+      .sk-pill { display: inline-block; height: 22px; width: 76px; border-radius: 999px; }
+
+      .todo-sk { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; }
+      .todo-sk + .todo-sk { border-bottom: 1px solid var(--border-soft); }
+      .todo-sk .sk-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; }
+      .todo-sk .sk-lines { flex: 1; display: grid; gap: 7px; }
+
+      /* ─── Responsive ─────────────────────────────────────────── */
+      @media (max-width: 1080px) {
+        .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+
+      @media (max-width: 1024px) {
+        .app { flex-direction: column; }
+        .sidebar {
+          width: 100%;
+          height: auto;
+          position: static;
+          border-right: 0;
+          border-bottom: 1px solid var(--border);
+        }
+        .side-brand { padding: 14px 20px 10px; }
+        .side-nav {
+          flex-direction: row;
+          overflow-x: auto;
+          padding: 6px 12px 12px;
+          scrollbar-width: none;
+        }
+        .side-nav::-webkit-scrollbar { display: none; }
+        .side-nav a { flex: none; }
+        .side-nav a .count { display: none; }
+        .side-user { border-top: 0; padding: 10px 20px 14px; }
+        .dash-grid { grid-template-columns: minmax(0, 1fr); }
+        .content { padding-inline: 20px; }
+      }
+
+      @media (max-width: 640px) {
+        .kpi-grid { grid-template-columns: minmax(0, 1fr); }
+        .page-head { flex-direction: column; }
+        .head-actions { margin-left: 0; width: 100%; }
+        .head-actions .btn { width: 100%; }
+        .card-head { padding: 16px 16px 10px; }
+        .chart-body { padding-inline: 16px; }
+        .tbl thead th, .tbl tbody td { padding-inline: 12px; }
+      }
+    </style>
+  
+
+    <!-- OD MICRO-INTERACTIONS START -->
+    <style data-micro-interactions="css">
+      /* Cross-page micro-interactions: focus ring, link slide underline,
+         button press, lazy image fade, dialog rise, scroll progress. */
+
+      :focus-visible {
+        outline: 2px solid var(--accent, #635bff);
+        outline-offset: 4px;
+        transition: outline-color 120ms ease;
+      }
+
+      /* Unify link underline into one animated system. !important suppresses
+         per-page text-decoration so only the slide underline renders; the
+         element-level background-image only affects painting, never layout. */
+      a {
+        text-decoration: none !important;
+        background-image: linear-gradient(currentColor, currentColor);
+        background-repeat: no-repeat;
+        background-position: 0 100%;
+        background-size: 0 1px;
+        background-origin: border-box;
+        transition:
+          background-size 150ms cubic-bezier(0.2, 0, 0, 1),
+          color 150ms ease,
+          background-color 150ms ease,
+          border-color 150ms ease,
+          opacity 150ms ease,
+          transform 150ms ease;
+      }
+      a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover {
+        background-size: 100% 1px;
+      }
+
+      button:not(.pwd-toggle):active,
+      .btn:active,
+      [role="button"]:active {
+        transform: scale(0.98);
+      }
+
+      @keyframes micro-rise {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      [role="dialog"] > *,
+      .drawer-inner > *,
+      .drawer-panel > * {
+        animation: micro-rise 260ms cubic-bezier(0.2, 0, 0, 1) both;
+      }
+      [role="dialog"] > * + *,
+      .drawer-inner > * + *,
+      .drawer-panel > * + * {
+        animation-delay: 50ms;
+      }
+
+      img[loading="lazy"] {
+        opacity: 0.8;
+        transition: opacity 260ms ease;
+      }
+      img[loading="lazy"].micro-loaded { opacity: 1; }
+
+      #scroll-progress {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%;
+        height: 2px;
+        transform: scaleX(var(--micro-prog, 0));
+        transform-origin: left center;
+        background: var(--accent, #635bff);
+        z-index: 1000;
+        pointer-events: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        a { background-image: none; }
+        a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover { background-size: 0 1px; }
+        button:not(.pwd-toggle):active,
+        .btn:active,
+        [role="button"]:active { transform: none; }
+        [role="dialog"] > *,
+        .drawer-inner > *,
+        .drawer-panel > * { animation: none; }
+        img[loading="lazy"] { opacity: 1; transition: none; }
+        #scroll-progress { transform: none; }
+      }
+    </style>
+    <!-- /OD MICRO-INTERACTIONS -->
+
+  </head>
+
+  <body>
+    <div class="app">
+      <!-- ─── Sidebar ─────────────────────────────────────────────── -->
+      <aside class="sidebar" aria-label="Điều hướng người bán">
+        <a class="side-brand" href="index.html">
+          <span class="mark" aria-hidden="true">A</span>
+          AuctionHub
+        </a>
+
+        <nav class="side-nav" aria-label="Menu chính">
+          <a href="dashboard.html" aria-current="page">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+            Tổng quan
+          </a>
+          <a href="auction-detail.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8H4.5a1.5 1.5 0 0 0-1.1 2.55L12 19l5-5-9-6Z"/><path d="m12 19 2.9 2.9a1.5 1.5 0 0 0 2.12 0l1.4-1.4a1.5 1.5 0 0 0 0-2.12L15 15"/><path d="M14.5 5.5c-1.5 1-2.5 2.5-2.5 4s1 3.5 2 4.5c2 2 5 1 5 1s1.5-3 0-5c-.9-.9-2-1.5-3-2"/></svg>
+            Phiên đấu giá
+            <span class="count">0</span>
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8Z"/><path d="M3 8V6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2"/><path d="M10 12h4"/></svg>
+            Đơn hàng
+            <span class="count">0</span>
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l4-4 4 4 3-3a4 4 0 0 0 3-1L21 9"/><path d="M21 9v4"/><path d="M21 9h-4"/></svg>
+            Doanh thu
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3Z"/></svg>
+            Đánh giá
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.02a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.02a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+            Cài đặt
+          </a>
+        </nav>
+
+        <div class="side-user">
+          <span class="avatar" aria-hidden="true">TV</span>
+          <div class="usermeta">
+            <b>TechStore VN</b>
+            <span class="badge">Seller</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ─── Main ─────────────────────────────────────────────────── -->
+      <main class="main" aria-busy="true">
+        <div class="content">
+          <div class="page-head">
+            <div>
+              <h1>Tổng quan</h1>
+              <p class="sub">Đang tải dữ liệu tài khoản.</p>
+            </div>
+            <div class="head-actions">
+              <button type="button" class="btn btn-primary" disabled>Tạo phiên đấu giá</button>
+            </div>
+          </div>
+
+          <span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Đang tải dữ liệu. Vui lòng chờ trong giây lát.</span>
+
+          <!-- KPI -->
+          <div class="kpi-grid" aria-hidden="true">
+            <div class="kpi">
+              <div class="label">Doanh thu tháng này</div>
+              <span class="sk sk-bar value"></span>
+              <span class="sk sk-bar delta"></span>
+            </div>
+            <div class="kpi">
+              <div class="label">Phiên đang hoạt động</div>
+              <span class="sk sk-bar value"></span>
+              <span class="sk sk-bar delta"></span>
+            </div>
+            <div class="kpi">
+              <div class="label">Tỷ lệ thắng</div>
+              <span class="sk sk-bar value"></span>
+              <span class="sk sk-bar delta"></span>
+            </div>
+            <div class="kpi">
+              <div class="label">Đánh giá trung bình</div>
+              <span class="sk sk-bar value"></span>
+              <span class="sk sk-bar delta"></span>
+            </div>
+          </div>
+
+          <div class="dash-grid">
+            <div class="col-left">
+              <!-- Revenue chart -->
+              <section class="card" aria-label="Biểu đồ doanh thu">
+                <div class="card-head">
+                  <div>
+                    <h2>Doanh thu</h2>
+                    <p class="card-sub" id="chart-sub">Tổng giá trị mỗi ngày trong 30 ngày qua</p>
+                  </div>
+                  <div class="card-extra">
+                    <div class="seg" role="group" aria-label="Khoảng thời gian biểu đồ">
+                      <button type="button" data-range="7" aria-pressed="false" disabled>7 ngày</button>
+                      <button type="button" data-range="30" aria-pressed="true" disabled>30 ngày</button>
+                      <button type="button" data-range="90" aria-pressed="false" disabled>90 ngày</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="chart-body">
+                  <div class="sk-chart" aria-hidden="true">
+                    <div class="sk sk-rect"></div>
+                    <p>Đang tải dữ liệu trong 30 ngày qua</p>
+                  </div>
+                </div>
+              </section>
+
+              <!-- Recent auctions -->
+              <section class="card" aria-label="Phiên đấu giá gần đây">
+                <div class="card-head">
+                  <div>
+                    <h2>Phiên đấu giá gần đây</h2>
+                    <p class="card-sub">Đang tải danh sách phiên</p>
+                  </div>
+                  <div class="card-extra">
+                    <span class="link-muted" aria-hidden="true">Xem tất cả phiên &rarr;</span>
+                  </div>
+                </div>
+                <div class="tbl-scroll">
+                  <table class="tbl">
+                    <thead>
+                      <tr>
+                        <th scope="col">Sản phẩm</th>
+                        <th scope="col">Giá hiện tại</th>
+                        <th scope="col">Lượt bid</th>
+                        <th scope="col">Trạng thái</th>
+                        <th scope="col">Kết thúc</th>
+                        <th scope="col">Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody aria-hidden="true">
+                      <tr class="sk-row" aria-hidden="true">
+                        <td>
+                          <div class="prod">
+                            <span class="sk sk-thumb"></span>
+                            <div class="od-stack" style="--od-gap:5px;flex:1;min-width:0;">
+                              <span class="sk sk-line w48"></span>
+                              <span class="sk sk-line w20"></span>
+                            </div>
+                          </div>
+                        </td>
+                        <td><span class="sk sk-line w28"></span></td>
+                        <td><span class="sk sk-pill"></span></td>
+                        <td><span class="sk sk-pill"></span></td>
+                        <td><span class="sk sk-line w34"></span></td>
+                        <td><span class="sk sk-line w12"></span></td>
+                      </tr>
+                      <tr class="sk-row" aria-hidden="true">
+                        <td>
+                          <div class="prod">
+                            <span class="sk sk-thumb"></span>
+                            <div class="od-stack" style="--od-gap:5px;flex:1;min-width:0;">
+                              <span class="sk sk-line w64"></span>
+                              <span class="sk sk-line w34"></span>
+                            </div>
+                          </div>
+                        </td>
+                        <td><span class="sk sk-line w34"></span></td>
+                        <td><span class="sk sk-pill"></span></td>
+                        <td><span class="sk sk-pill"></span></td>
+                        <td><span class="sk sk-line w28"></span></td>
+                        <td><span class="sk sk-line w20"></span></td>
+                      </tr>
+                      <tr class="sk-row" aria-hidden="true">
+                        <td>
+                          <div class="prod">
+                            <span class="sk sk-thumb"></span>
+                            <div class="od-stack" style="--od-gap:5px;flex:1;min-width:0;">
+                              <span class="sk sk-line w48"></span>
+                              <span class="sk sk-line w20"></span>
+                            </div>
+                          </div>
+                        </td>
+                        <td><span class="sk sk-line w28"></span></td>
+                        <td><span class="sk sk-pill"></span></td>
+                        <td><span class="sk sk-pill"></span></td>
+                        <td><span class="sk sk-line w34"></span></td>
+                        <td><span class="sk sk-line w12"></span></td>
+                      </tr>
+                      <tr class="sk-row" aria-hidden="true">
+                        <td>
+                          <div class="prod">
+                            <span class="sk sk-thumb"></span>
+                            <div class="od-stack" style="--od-gap:5px;flex:1;min-width:0;">
+                              <span class="sk sk-line w64"></span>
+                              <span class="sk sk-line w28"></span>
+                            </div>
+                          </div>
+                        </td>
+                        <td><span class="sk sk-line w34"></span></td>
+                        <td><span class="sk sk-pill"></span></td>
+                        <td><span class="sk sk-pill"></span></td>
+                        <td><span class="sk sk-line w28"></span></td>
+                        <td><span class="sk sk-line w20"></span></td>
+                      </tr>
+                      <tr class="sk-row" aria-hidden="true">
+                        <td>
+                          <div class="prod">
+                            <span class="sk sk-thumb"></span>
+                            <div class="od-stack" style="--od-gap:5px;flex:1;min-width:0;">
+                              <span class="sk sk-line w48"></span>
+                              <span class="sk sk-line w34"></span>
+                            </div>
+                          </div>
+                        </td>
+                        <td><span class="sk sk-line w20"></span></td>
+                        <td><span class="sk sk-pill"></span></td>
+                        <td><span class="sk sk-pill"></span></td>
+                        <td><span class="sk sk-line w34"></span></td>
+                        <td><span class="sk sk-line w12"></span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+
+            <div class="col-right">
+              <!-- Todo -->
+              <section class="card" aria-label="Việc cần làm">
+                <div class="card-head">
+                  <div>
+                    <h2>Việc cần làm</h2>
+                    <p class="card-sub">Đang tải danh sách</p>
+                  </div>
+                </div>
+                <div class="chart-body" style="padding-top:4px;">
+                  <div class="todo-sk" aria-hidden="true">
+                    <span class="sk sk-dot"></span>
+                    <div class="sk-lines">
+                      <span class="sk sk-line w64"></span>
+                      <span class="sk sk-line w48"></span>
+                    </div>
+                  </div>
+                  <div class="todo-sk" aria-hidden="true">
+                    <span class="sk sk-dot"></span>
+                    <div class="sk-lines">
+                      <span class="sk sk-line w48"></span>
+                      <span class="sk sk-line w34"></span>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <div class="mini-note">
+                Mẹo: các phiên có thêm ảnh thực tế và mô tả chi tiết thường đạt
+                giá cao hơn <span class="tnum">23%</span>.
+                <a href="#">Xem hướng dẫn đăng phiên</a>.
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  
+
+    <script data-micro-interactions="js">
+      (function () {
+        var lazy = document.querySelectorAll('img[loading="lazy"]');
+        for (var i = 0; i < lazy.length; i++) {
+          (function (img) {
+            if (img.complete) { img.classList.add("micro-loaded"); return; }
+            img.addEventListener("load", function () {
+              img.classList.add("micro-loaded");
+            });
+          })(lazy[i]);
+        }
+
+        var bar = document.getElementById("scroll-progress");
+        if (!bar) return;
+        function paint() {
+          var doc = document.documentElement;
+          var max = doc.scrollHeight - window.innerHeight;
+          var p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+          bar.style.setProperty("--micro-prog", p.toFixed(4));
+        }
+        window.addEventListener("scroll", paint, { passive: true });
+        window.addEventListener("resize", paint);
+        paint();
+      })();
+    </script>
+
+  </body>
+</html>

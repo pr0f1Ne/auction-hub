@@ -1,0 +1,942 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Phiên đang theo dõi (8) | AuctionHub</title>
+    <meta
+      name="description"
+      content="8 phiên đấu giá bạn đang theo dõi trên AuctionHub. Sắp xếp theo thời gian kết thúc, giá hoặc thời điểm thêm. Nhận thông báo 30 phút trước khi phiên kết thúc."
+    />
+
+    <style>
+      /* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio.
+         Put this @layer first; product CSS outside the layer always wins. */
+      @layer od-layout {
+        :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+
+        /* containers */
+        .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+        .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+        .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+        .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+        .od-fill    { flex: 1 1 0; min-width: 0; }
+        .od-fixed   { flex: none; }
+        .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+
+        /* stacked information: each piece is its own line — never sibling inline spans */
+        .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+        :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+        .od-tile { display: grid; grid-template-rows: auto 1fr; }
+        :where(.od-tile) > :where(*) { display: block; }
+
+        /* media keeps its intrinsic ratio by default; never a distorted or cropped
+           cover by accident. height:auto lets the ratio win over an <img height="…">
+           attribute. Cropping to a uniform box is an explicit opt-in: set --od-ratio
+           AND add .od-media-cover together (per the core rule, only where a crop is
+           deliberate — tile thumbs, decorative fills — never on full-frame content). */
+        .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+        .od-media-cover { object-fit: cover; }
+
+        /* data text only — authored copy is rewritten to its budget instead */
+        .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+        .od-clamp-2 { -webkit-line-clamp: 2; }
+        .od-clamp-3 { -webkit-line-clamp: 3; }
+        .od-lines-2 { min-height: calc(2 * 1.4em); }   /* block-level reservation for a shared baseline */
+        .od-nowrap  { white-space: nowrap; }           /* 数字+单位 · 价格+起 · 日期+星期 */
+        .od-keep    { word-break: keep-all; overflow-wrap: anywhere; } /* CJK labels break at spaces / <wbr> first */
+
+        /* screen skeleton (optional): bars take their own space, the middle scrolls — no padding guessed for chrome */
+        .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+        .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+
+        /* horizontal rail: the next item peeks at the edge; trailing room survives overflow */
+        .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+                   padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+        .od-rail::-webkit-scrollbar { display: none; }
+        :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+        :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+
+        .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+        .od-touch  { min-width: 44px; min-height: 44px; }
+      }
+      /* /OD-LAYOUT-PRIMITIVES v1 */
+
+      /* ─── Design tokens ─────────────────────────────────────────────
+         Shared Stripe schema, resolved per the AuctionHub brief:
+         accent #635BFF, background #FFFFFF / #FAFAFA, charcoal text
+         #1A1A1A. Nội dung chỉ tham chiếu qua var(--name). */
+      :root {
+        --bg:           #ffffff;
+        --surface:      #ffffff;
+        --surface-warm: #fafafa;
+        --surface-side: #f9fafb;
+
+        --fg:    #1a1a1a;
+        --fg-2:  #374151;
+        --muted: #6b7280;
+        --meta:  var(--muted);
+
+        --border:      #e5e7eb;
+        --border-soft: var(--border);
+
+        --accent:    #635bff;
+        --accent-on: #ffffff;
+
+        --accent-hover:  #5851df;
+        --accent-active: #4f46d6;
+
+        --success:      #15be53;
+        --success-text: #0b7a44;
+        --success-bg:   #eaf7f1;
+        --warn:         #9b6829;
+        --danger:       #ea2261;
+        --danger-text:  #b4233e;
+        --danger-bg:    #fbeeef;
+        --urgent:       #ef4444;
+
+        --blue-text:  #1d4ed8;
+        --blue-bg:    #eff6ff;
+        --gray-text:  #6b7280;
+        --gray-bg:    #f3f4f6;
+
+        --on-dark:       #ffffff;
+        --on-dark-muted: rgba(255, 255, 255, 0.72);
+        --dark-bg:       #1a1a1a;
+        --dark-bg-2:     #111113;
+
+        --font-display:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-body:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-mono:
+          "SourceCodePro", "Source Code Pro",
+          ui-monospace, "SF Mono", "JetBrains Mono",
+          Menlo, Monaco, Consolas, monospace;
+
+        --text-xs:   12px;
+        --text-sm:   14px;
+        --text-base: 17px;
+        --text-lg:   19px;
+        --text-xl:   24px;
+        --text-2xl:  32px;
+        --text-3xl:  46px;
+
+        --leading-body:     1.55;
+        --leading-tight:    1.1;
+        --tracking-display: -0.02em;
+
+        --space-1:  4px;
+        --space-2:  8px;
+        --space-3:  12px;
+        --space-4:  16px;
+        --space-5:  20px;
+        --space-6:  24px;
+        --space-8:  32px;
+        --space-12: 48px;
+
+        --radius-sm: 4px;
+        --radius-md: 6px;
+        --radius-lg: 8px;
+
+        --elev-flat:   none;
+        --elev-ring:   0 0 0 1px var(--border);
+        --elev-soft:
+          rgba(50, 50, 93, 0.06) 0px 6px 18px -6px,
+          rgba(0,   0,  0, 0.06) 0px 3px 8px  -4px;
+        --elev-raised:
+          rgba(50, 50, 93, 0.16) 0px 24px 40px -28px,
+          rgba(0,   0,  0, 0.10) 0px 16px 32px -18px;
+
+        --motion-fast:   150ms;
+        --motion-base:   200ms;
+        --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+        --container-max:            1080px;
+        --container-gutter-desktop: 32px;
+        --container-gutter-tablet:  24px;
+        --container-gutter-phone:   20px;
+
+        --focus-ring: 0 0 0 3px rgba(99, 91, 255, 0.28);
+      }
+
+      /* ─── Base ─────────────────────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; }
+      html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--font-body);
+        font-size: var(--text-base);
+        line-height: var(--leading-body);
+        font-weight: 400;
+        font-feature-settings: "ss01";
+        -webkit-font-smoothing: antialiased;
+      }
+      p { margin: 0; }
+
+      .tnum { font-feature-settings: "tnum", "ss01"; }
+
+      .container {
+        max-width: var(--container-max);
+        margin-inline: auto;
+        padding-inline: var(--container-gutter-desktop);
+      }
+
+      h1, h2, h3 {
+        font-family: var(--font-display);
+        font-weight: 300;
+        line-height: var(--leading-tight);
+        letter-spacing: var(--tracking-display);
+        color: var(--fg);
+        margin: 0;
+      }
+
+      a {
+        color: var(--fg);
+        text-decoration: underline;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+        font-feature-settings: "ss01";
+        transition: color var(--motion-fast) var(--ease-standard);
+      }
+      a:hover { color: var(--fg-2); }
+
+      /* ─── Buttons ──────────────────────────────────────────────── */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        padding: 10px 18px;
+        border-radius: var(--radius-sm);
+        font-family: var(--font-display);
+        font-feature-settings: "ss01";
+        font-weight: 500;
+        font-size: var(--text-base);
+        line-height: 1;
+        cursor: pointer;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--fg);
+        text-decoration: none;
+        min-height: 44px;
+        transition:
+          background-color var(--motion-fast) var(--ease-standard),
+          border-color var(--motion-fast) var(--ease-standard),
+          color var(--motion-fast) var(--ease-standard),
+          box-shadow var(--motion-fast) var(--ease-standard);
+      }
+      .btn:focus-visible,
+      .watch-heart:focus-visible,
+      .follow-toggle:focus-visible,
+      a:focus-visible {
+        outline: 2px solid var(--fg-2);
+        outline-offset: 2px;
+      }
+
+      .btn-primary {
+        background: var(--accent);
+        color: var(--accent-on);
+      }
+      .btn-primary:hover  { background: var(--accent-hover); color: var(--accent-on); }
+      .btn-primary:active { background: var(--accent-active); color: var(--accent-on); }
+
+      /* ─── Site header ──────────────────────────────────────────── */
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: rgba(255, 255, 255, 0.92);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border);
+      }
+      .site-header .container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-4);
+        height: 72px;
+      }
+      .brand {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 2px;
+        font-family: var(--font-display);
+        font-feature-settings: "ss01";
+        font-size: 19px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--fg);
+        text-decoration: none;
+      }
+      .brand:hover { color: var(--fg); }
+      .brand-dot { color: var(--accent); }
+
+      .nav { display: flex; align-items: center; gap: var(--space-3); }
+      .nav-link {
+        text-decoration: none;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--fg-2);
+        border-radius: var(--radius-sm);
+        display: inline-flex;
+        align-items: center;
+        min-height: 40px;
+      }
+      .nav-link:hover { color: var(--fg); }
+
+      /* ─── Breadcrumb ───────────────────────────────────────────── */
+      .crumbs {
+        padding-block: var(--space-5) 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-2);
+        font-size: var(--text-sm);
+        color: var(--muted);
+      }
+      .crumbs a { color: var(--muted); text-decoration: none; }
+      .crumbs a:hover { color: var(--fg); }
+      .crumbs .sep { color: #d1d5db; }
+
+      /* ─── Watchlist head ───────────────────────────────────────── */
+      .watch-main { padding-block-end: var(--space-12); }
+      .watch-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-4);
+        flex-wrap: wrap;
+        padding-block-start: var(--space-8);
+        margin-block-end: var(--space-2);
+      }
+      .watch-title {
+        font-size: clamp(22px, 2vw, 28px);
+        font-weight: 400;
+        letter-spacing: -0.01em;
+      }
+      .watch-note { font-size: var(--text-sm); color: var(--muted); margin-block-end: var(--space-6); }
+
+      /* ─── Sort picker ──────────────────────────────────────────── */
+      .sort-picker { position: relative; }
+      .sort-picker select {
+        appearance: none;
+        -webkit-appearance: none;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--surface);
+        color: var(--fg-2);
+        font-size: var(--text-sm);
+        font-family: inherit;
+        padding: 8px 34px 8px 12px;
+        cursor: pointer;
+        transition: border-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
+      }
+      .sort-picker select:hover { border-color: #d1d5db; }
+      .sort-picker select:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+      .sort-picker::after {
+        content: "";
+        position: absolute;
+        right: 14px; top: 50%;
+        width: 8px; height: 8px;
+        border-right: 1.5px solid var(--muted);
+        border-bottom: 1.5px solid var(--muted);
+        transform: translateY(-70%) rotate(45deg);
+        pointer-events: none;
+      }
+
+      /* ─── Watchlist grid ───────────────────────────────────────── */
+      .sale-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--space-6);
+      }
+      .sale-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: box-shadow var(--motion-base) var(--ease-standard), border-color var(--motion-base) var(--ease-standard);
+      }
+      .sale-card:hover { box-shadow: var(--elev-soft); border-color: #d7dae0; }
+      .media-frame { position: relative; padding: var(--space-3) var(--space-3) 0; }
+      .media-frame .media { display: block; }
+      .media-frame .media img {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        border-radius: var(--radius-md);
+        background: var(--surface-warm);
+      }
+      .sale-body {
+        padding: var(--space-3) var(--space-4) var(--space-4);
+        display: grid;
+        gap: var(--space-3);
+        flex: 1;
+      }
+      .sale-card .card-title {
+        font-family: var(--font-display);
+        font-size: 17px;
+        font-weight: 500;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+        color: var(--fg);
+      }
+      .sale-card .card-title a { color: var(--fg); text-decoration: none; }
+      .sale-card .card-title a:hover { color: var(--accent); }
+      .sale-price-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: var(--space-3);
+      }
+      .price-grid { display: grid; gap: 2px; }
+      .price-label { font-size: var(--text-xs); color: var(--muted); }
+      .sale-price {
+        font-family: var(--font-display);
+        font-feature-settings: "tnum", "ss01";
+        font-weight: 500;
+        font-size: 20px;
+        color: var(--fg);
+        white-space: nowrap;
+      }
+      .countdown-wrap { display: grid; gap: 2px; justify-items: end; text-align: right; }
+      .countdown-time {
+        font-family: var(--font-mono);
+        font-feature-settings: "tnum";
+        font-size: var(--text-xs);
+        color: var(--fg-2);
+        min-height: 1.4em;
+        white-space: nowrap;
+      }
+      .sale-card .btn { width: 100%; }
+
+      /* ─── Theo dõi: trái tim + badge ───────────────────────────── */
+      .watch-heart {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid #e9eaf0;
+        background: rgba(255, 255, 255, 0.96);
+        color: var(--accent);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: rgba(50, 50, 93, 0.08) 0px 2px 6px -1px;
+        transition:
+          background-color var(--motion-fast) var(--ease-standard),
+          border-color var(--motion-fast) var(--ease-standard),
+          color var(--motion-fast) var(--ease-standard);
+      }
+      .watch-heart svg { width: 18px; height: 18px; }
+      .watch-heart .ic-x { display: none; }
+      .watch-heart:hover,
+      .watch-heart:focus-visible {
+        background: var(--danger-bg);
+        border-color: #f2c2ce;
+        color: var(--danger-text);
+      }
+      .watch-heart:hover .ic-heart,
+      .watch-heart:focus-visible .ic-heart { display: none; }
+      .watch-heart:hover .ic-x,
+      .watch-heart:focus-visible .ic-x { display: block; }
+
+      .ending-badge {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: #fef3c7;
+        color: #b45309;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.4;
+        border-radius: 999px;
+        padding: 4px 10px;
+        pointer-events: none;
+        white-space: nowrap;
+      }
+
+      /* ─── Toggle thông báo ─────────────────────────────────────── */
+      .follow-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: transparent;
+        border: 0;
+        margin: 0;
+        padding: 6px 6px 6px 2px;
+        font: inherit;
+        font-size: 13px;
+        color: var(--fg-2);
+        cursor: pointer;
+        width: max-content;
+        min-height: 32px;
+        border-radius: var(--radius-sm);
+        transition: color var(--motion-fast) var(--ease-standard), background-color var(--motion-fast) var(--ease-standard);
+      }
+      .follow-toggle svg { width: 15px; height: 15px; color: var(--muted); flex: none; }
+      .follow-toggle:hover { background: var(--surface-warm); }
+      .follow-toggle .switch {
+        position: relative;
+        width: 34px;
+        height: 20px;
+        border-radius: 999px;
+        background: #d1d5db;
+        flex: none;
+        transition: background-color var(--motion-fast) var(--ease-standard);
+      }
+      .follow-toggle .switch::after {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #ffffff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+        transition: transform var(--motion-fast) var(--ease-standard);
+      }
+      .follow-toggle[aria-pressed="true"] .switch { background: var(--accent); }
+      .follow-toggle[aria-pressed="true"] .switch::after { transform: translateX(14px); }
+      .follow-toggle[aria-pressed="false"] { color: var(--muted); }
+
+      /* ─── Empty state ──────────────────────────────────────────── */
+      .empty-panel {
+        border: 1px dashed var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--surface);
+        padding: var(--space-12) var(--space-8);
+        text-align: center;
+        display: grid;
+        justify-items: center;
+        gap: var(--space-2);
+      }
+      .empty-panel .empty-icon { color: var(--muted); margin-bottom: var(--space-1); }
+      .empty-panel h2 {
+        font-size: 21px;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+      }
+      .empty-panel p {
+        font-size: var(--text-sm);
+        color: var(--muted);
+        max-width: 46ch;
+        margin: 0;
+      }
+      .empty-panel .empty-actions {
+        margin-top: var(--space-4);
+        display: flex;
+        gap: var(--space-3);
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      /* ─── Toast ────────────────────────────────────────────────── */
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        transform: translate(-50%, 16px);
+        background: var(--dark-bg);
+        color: #fff;
+        font-size: var(--text-sm);
+        padding: 11px 18px;
+        border-radius: 8px;
+        box-shadow: var(--elev-soft);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--motion-base) var(--ease-standard), transform var(--motion-base) var(--ease-standard);
+        z-index: 60;
+        max-width: min(90vw, 560px);
+      }
+      .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+      /* ─── Footer ───────────────────────────────────────────────── */
+      .site-footer {
+        border-top: 1px solid var(--border);
+        background: var(--surface-warm);
+        padding-block: var(--space-6);
+      }
+      .site-footer .container {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-3);
+        font-size: var(--text-sm);
+        color: var(--muted);
+      }
+      .site-footer a { color: var(--fg-2); text-decoration: none; font-weight: 500; }
+      .site-footer a:hover { color: var(--fg); }
+
+      /* ─── Responsive ───────────────────────────────────────────── */
+      @media (max-width: 1023px) {
+        .sale-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (max-width: 719px) {
+        .container { padding-inline: var(--container-gutter-phone); }
+        .sale-grid { grid-template-columns: 1fr; }
+        .nav { display: none; }
+        .watch-head { align-items: flex-start; flex-direction: column; }
+        .site-footer .container { flex-direction: column; align-items: flex-start; }
+      }
+    </style>
+  
+
+    <!-- OD MICRO-INTERACTIONS START -->
+    <style data-micro-interactions="css">
+      /* Cross-page micro-interactions: focus ring, link slide underline,
+         button press, lazy image fade, dialog rise, scroll progress. */
+
+      :focus-visible {
+        outline: 2px solid var(--accent, #635bff);
+        outline-offset: 4px;
+        transition: outline-color 120ms ease;
+      }
+
+      /* Unify link underline into one animated system. !important suppresses
+         per-page text-decoration so only the slide underline renders; the
+         element-level background-image only affects painting, never layout. */
+      a {
+        text-decoration: none !important;
+        background-image: linear-gradient(currentColor, currentColor);
+        background-repeat: no-repeat;
+        background-position: 0 100%;
+        background-size: 0 1px;
+        background-origin: border-box;
+        transition:
+          background-size 150ms cubic-bezier(0.2, 0, 0, 1),
+          color 150ms ease,
+          background-color 150ms ease,
+          border-color 150ms ease,
+          opacity 150ms ease,
+          transform 150ms ease;
+      }
+      a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover {
+        background-size: 100% 1px;
+      }
+
+      button:not(.pwd-toggle):active,
+      .btn:active,
+      [role="button"]:active {
+        transform: scale(0.98);
+      }
+
+      @keyframes micro-rise {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      [role="dialog"] > *,
+      .drawer-inner > *,
+      .drawer-panel > * {
+        animation: micro-rise 260ms cubic-bezier(0.2, 0, 0, 1) both;
+      }
+      [role="dialog"] > * + *,
+      .drawer-inner > * + *,
+      .drawer-panel > * + * {
+        animation-delay: 50ms;
+      }
+
+      img[loading="lazy"] {
+        opacity: 0.8;
+        transition: opacity 260ms ease;
+      }
+      img[loading="lazy"].micro-loaded { opacity: 1; }
+
+      #scroll-progress {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%;
+        height: 2px;
+        transform: scaleX(var(--micro-prog, 0));
+        transform-origin: left center;
+        background: var(--accent, #635bff);
+        z-index: 1000;
+        pointer-events: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        a { background-image: none; }
+        a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover { background-size: 0 1px; }
+        button:not(.pwd-toggle):active,
+        .btn:active,
+        [role="button"]:active { transform: none; }
+        [role="dialog"] > *,
+        .drawer-inner > *,
+        .drawer-panel > * { animation: none; }
+        img[loading="lazy"] { opacity: 1; transition: none; }
+        #scroll-progress { transform: none; }
+      }
+    </style>
+    <!-- /OD MICRO-INTERACTIONS -->
+
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a class="brand" href="index.html" aria-label="AuctionHub trang chủ">
+          AuctionHub<span class="brand-dot">.</span>
+        </a>
+
+        <nav class="nav" aria-label="Điều hướng chính">
+          <a class="nav-link" href="index.html">Trang chủ</a>
+          <a class="nav-link" href="index.html#phien-dang-dien-ra">Phiên đang diễn ra</a>
+          <a class="nav-link" href="index.html#how-it-works">Cách hoạt động</a>
+        </nav>
+
+        <a class="btn btn-ghost" href="login.html">Đăng nhập</a>
+      </div>
+    </header>
+
+    <main class="watch-main" id="main">
+      <div class="container">
+        <nav class="crumbs" aria-label="Chuỗi điều hướng">
+          <a href="index.html">Trang chủ</a>
+          <span class="sep" aria-hidden="true">/</span>
+          <span>Theo dõi</span>
+        </nav>
+
+        <div class="watch-head">
+          <h1 class="watch-title">Đang theo dõi (<span id="watch-count" class="tnum">8</span>)</h1>
+          <div class="sort-picker" id="sort-picker">
+            <label for="sort-select" class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Sắp xếp phiên đang theo dõi</label>
+            <select id="sort-select">
+              <option value="ending">Sắp kết thúc</option>
+              <option value="newest">Mới thêm</option>
+              <option value="price">Giá</option>
+            </select>
+          </div>
+        </div>
+
+        <p class="watch-note" id="watch-note">3 phiên kết thúc trong 24h tới.</p>
+
+        <div id="results-holder">
+          <div class="sale-grid" id="sale-grid" aria-live="polite"></div>
+          <div class="empty-panel" id="empty-panel" hidden>
+            <svg class="empty-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z" />
+            </svg>
+            <h2>Chưa theo dõi phiên nào</h2>
+            <p>Nhấn ♡ trên bất kỳ phiên đấu giá nào để thêm vào đây. Bạn sẽ nhận thông báo 30 phút trước khi phiên kết thúc.</p>
+            <div class="empty-actions">
+              <a class="btn btn-primary" href="search.html">Khám phá phiên đang chạy</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <span>© 2026 AuctionHub JSC. Phiên đấu giá minh họa cho bản prototype.</span>
+        <a href="index.html">Quay về trang chủ</a>
+      </div>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      (function () {
+        var $ = function (sel, root) { return (root || document).querySelector(sel); };
+        var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+
+        var toast = $("#toast");
+        var toastTimer = null;
+        function showToast(msg) {
+          toast.textContent = msg;
+          toast.classList.add("show");
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(function () { toast.classList.remove("show"); }, 2600);
+        }
+
+        /* ── Phiên đang theo dõi (8 phiên) ── */
+        var WATCH = [
+          { t: "MacBook Pro 14 M3 2023",          p: 38500000, sec: 186400, img: "images/laptop.jpg",      w: 800,  h: 800,  alt: "MacBook Pro 14 inch M3 2023" },
+          { t: "MacBook Pro 16 M3 Max",           p: 59900000, sec: 2520,   img: "images/mbp-front.jpg",   w: 1600, h: 1067, alt: "MacBook Pro 16 inch M3 Max" },
+          { t: "iPhone 15 Pro Max 256GB",         p: 27900000, sec: 64800,  img: "images/phone.jpg",       w: 600,  h: 400,  alt: "iPhone 15 Pro Max 256GB màu tự nhiên" },
+          { t: "iPad Pro 11 M4 256GB",            p: 23600000, sec: 145600, img: "images/tablet.jpg",      w: 600,  h: 427,  alt: "iPad Pro 11 inch M4 256GB" },
+          { t: "MacBook Air 13 M2 2022",          p: 23900000, sec: 259200, img: "images/mbp-angle.jpg",   w: 1600, h: 1280, alt: "MacBook Air 13 inch M2 một góc 3/4" },
+          { t: "AirPods Max",                     p: 11500000, sec: 3300,   img: "images/headphones.jpg",   w: 600,  h: 400,  alt: "AirPods Max màu xám" },
+          { t: "MacBook Pro 14 M1 Pro 2021",      p: 26400000, sec: 388800, img: "images/mbp-side.jpg",    w: 904,  h: 840,  alt: "MacBook Pro 14 inch M1 Pro nhìn nghiêng" },
+          { t: "MacBook Air 15 M2 2023",          p: 26800000, sec: 172800, img: "images/mbp-front.jpg",   w: 1600, h: 1067, alt: "MacBook Air 15 inch M2" }
+        ];
+
+        var removed = {};
+        var muted = {};
+        var live = {};
+        WATCH.forEach(function (it) { live[it.t] = it.sec; });
+
+        var CAP = 99 * 3600 + 59 * 60 + 59;
+
+        function fmtVND(n) {
+          return n.toLocaleString("vi-VN").replace(/,/g, ".") + "\u0111";
+        }
+        function pad2(n) { return n < 10 ? "0" + n : String(n); }
+        function fmt(sec) {
+          var h = Math.floor(sec / 3600);
+          var m = Math.floor((sec % 3600) / 60);
+          var s = sec % 60;
+          return pad2(h) + ":" + pad2(m) + ":" + pad2(s);
+        }
+        function fmtLive(t) { return fmt(Math.min(live[t], CAP)); }
+
+        function card(it) {
+          var badge = it.sec < 3600 ? '<span class="ending-badge">Sắp kết thúc</span>' : "";
+          return (
+            '<article class="sale-card" data-t="' + it.t + '">' +
+              '<div class="media-frame">' +
+                '<a class="media" href="auction-detail.html">' +
+                  '<img src="' + it.img + '" alt="' + it.alt + '" width="' + it.w + '" height="' + it.h + '" loading="lazy" />' +
+                "</a>" +
+                badge +
+                '<button class="watch-heart" type="button" data-follow="' + it.t + '" aria-label="Bỏ theo dõi ' + it.t + '">' +
+                  '<svg class="ic-heart" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z" /></svg>' +
+                  '<svg class="ic-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>' +
+                "</button>" +
+              "</div>" +
+              '<div class="sale-body">' +
+                '<h3 class="card-title"><a href="auction-detail.html">' + it.t + "</a></h3>" +
+                '<div class="sale-price-row">' +
+                  '<span class="price-grid">' +
+                    '<span class="price-label">Giá hiện tại</span>' +
+                    '<span class="sale-price tnum">' + fmtVND(it.p) + "</span>" +
+                  "</span>" +
+                  '<span class="countdown-wrap">' +
+                    '<span class="countdown-time" data-t="' + it.t + '">' + fmtLive(it.t) + "</span>" +
+                    '<span class="price-label">Kết thúc sau</span>' +
+                  "</span>" +
+                "</div>" +
+                '<button class="follow-toggle" type="button" aria-pressed="' + (muted[it.t] ? "false" : "true") + '">' +
+                  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>' +
+                  '<span>Thông báo khi sắp kết thúc</span>' +
+                  '<span class="switch" aria-hidden="true"></span>' +
+                "</button>" +
+                '<button class="btn btn-primary" type="button" data-open="' + it.t + '">Đặt giá</button>' +
+              "</div>" +
+            "</article>"
+          );
+        }
+
+        function sorted(list) {
+          var sort = $("#sort-select").value;
+          var arr = list.slice();
+          if (sort === "ending") { arr.sort(function (a, b) { return live[a.t] - live[b.t]; }); }
+          else if (sort === "price") { arr.sort(function (a, b) { return a.p - b.p; }); }
+          return arr;
+        }
+
+        function render() {
+          var alive = WATCH.filter(function (it) { return !removed[it.t]; });
+          var list = sorted(alive);
+          var end24 = alive.filter(function (it) { return live[it.t] <= 86400; }).length;
+
+          $("#watch-count").textContent = String(alive.length);
+          $("#sort-picker").hidden = alive.length === 0;
+
+          var note = $("#watch-note");
+          note.hidden = alive.length === 0;
+          if (alive.length > 0) {
+            note.textContent = end24 === 0
+              ? "Không có phiên nào kết thúc trong 24h tới."
+              : end24 + " phiên kết thúc trong 24h tới.";
+          }
+
+          $("#sale-grid").innerHTML = list.map(card).join("");
+          $("#sale-grid").hidden = alive.length === 0;
+          $("#empty-panel").hidden = alive.length > 0;
+        }
+
+        $("#sort-select").addEventListener("change", render);
+
+        $("#sale-grid").addEventListener("click", function (e) {
+          var heart = e.target.closest(".watch-heart");
+          var toggle = e.target.closest(".follow-toggle");
+          var open = e.target.closest("[data-open]");
+
+          if (heart) {
+            var t = heart.getAttribute("data-follow");
+            removed[t] = true;
+            render();
+            showToast("Đã bỏ theo dõi “" + t + "”. Bạn sẽ không nhận thông báo khi phiên kết thúc.");
+            return;
+          }
+          if (toggle) {
+            var title = toggle.closest(".sale-card").getAttribute("data-t");
+            if (muted[title]) {
+              delete muted[title];
+              toggle.setAttribute("aria-pressed", "true");
+              showToast("Sẽ nhận thông báo 30 phút trước khi phiên kết thúc.");
+            } else {
+              muted[title] = true;
+              toggle.setAttribute("aria-pressed", "false");
+              showToast("Đã tắt thông báo cho phiên này.");
+            }
+            return;
+          }
+          if (open) {
+            showToast("Đang mở phiên đấu giá “" + open.getAttribute("data-open") + "”.");
+          }
+        });
+
+        /* ── Countdown ── */
+        function tick() {
+          $$(".countdown-time").forEach(function (el) {
+            var t = el.getAttribute("data-t");
+            if (!t || live[t] == null) return;
+            if (live[t] > 0) live[t] -= 1;
+            el.textContent = fmtLive(t);
+          });
+        }
+
+        render();
+        tick();
+        setInterval(tick, 1000);
+      })();
+    </script>
+  
+
+    <script data-micro-interactions="js">
+      (function () {
+        var lazy = document.querySelectorAll('img[loading="lazy"]');
+        for (var i = 0; i < lazy.length; i++) {
+          (function (img) {
+            if (img.complete) { img.classList.add("micro-loaded"); return; }
+            img.addEventListener("load", function () {
+              img.classList.add("micro-loaded");
+            });
+          })(lazy[i]);
+        }
+
+        var bar = document.getElementById("scroll-progress");
+        if (!bar) return;
+        function paint() {
+          var doc = document.documentElement;
+          var max = doc.scrollHeight - window.innerHeight;
+          var p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+          bar.style.setProperty("--micro-prog", p.toFixed(4));
+        }
+        window.addEventListener("scroll", paint, { passive: true });
+        window.addEventListener("resize", paint);
+        paint();
+      })();
+    </script>
+
+  </body>
+</html>

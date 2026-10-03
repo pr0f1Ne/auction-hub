@@ -1,0 +1,1749 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AuctionHub | Tổng quan hệ thống</title>
+    <meta
+      name="description"
+      content="Bảng điều khiển quản trị AuctionHub: doanh thu nền tảng 8.450.000đ phí 7%, 156 phiên hoạt động, 234 người dùng mới, 3 tranh chấp mở. Duyệt phiên, xử lý tranh chấp và theo dõi doanh thu."
+    />
+
+    <style>
+      /* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio.
+         Put this @layer first; product CSS outside the layer always wins. */
+      @layer od-layout {
+        :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+
+        /* containers */
+        .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+        .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+        .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+        .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+        .od-fill    { flex: 1 1 0; min-width: 0; }
+        .od-fixed   { flex: none; }
+        .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+
+        /* stacked information: each piece is its own line — never sibling inline spans */
+        .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+        :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+        .od-tile { display: grid; grid-template-rows: auto 1fr; }
+        :where(.od-tile) > :where(*) { display: block; }
+
+        /* media keeps its intrinsic ratio by default; never a distorted or cropped
+           cover by accident. height:auto lets the ratio win over an <img height="…">
+           attribute. Cropping to a uniform box is an explicit opt-in: set --od-ratio
+           AND add .od-media-cover together (per the core rule, only where a crop is
+           deliberate — tile thumbs, decorative fills — never on full-frame content). */
+        .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+        .od-media-cover { object-fit: cover; }
+
+        /* data text only — authored copy is rewritten to its budget instead */
+        .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+        .od-clamp-2 { -webkit-line-clamp: 2; }
+        .od-clamp-3 { -webkit-line-clamp: 3; }
+        .od-lines-2 { min-height: calc(2 * 1.4em); }   /* block-level reservation for a shared baseline */
+        .od-nowrap  { white-space: nowrap; }           /* 数字+单位 · 价格+起 · 日期+星期 */
+        .od-keep    { word-break: keep-all; overflow-wrap: anywhere; } /* CJK labels break at spaces / <wbr> first */
+
+        /* screen skeleton (optional): bars take their own space, the middle scrolls — no padding guessed for chrome */
+        .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+        .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+
+        /* horizontal rail: the next item peeks at the edge; trailing room survives overflow */
+        .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+                   padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+        .od-rail::-webkit-scrollbar { display: none; }
+        :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+        :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+
+        .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+        .od-touch  { min-width: 44px; min-height: 44px; }
+      }
+      /* /OD-LAYOUT-PRIMITIVES v1 */
+
+      /* ─── Design tokens ─────────────────────────────────────────── */
+      :root {
+        --bg:           #ffffff;
+        --surface:      #ffffff;
+        --surface-warm: #fafafa;
+        --surface-side: #f9fafb;
+
+        --fg:    #1a1a1a;
+        --fg-2:  #374151;
+        --muted: #6b7280;
+        --meta:  var(--muted);
+
+        --border:      #e5e7eb;
+        --border-soft: var(--border);
+
+        --accent:    #635bff;
+        --accent-on: #ffffff;
+
+        --accent-hover:  #5851df;
+        --accent-active: #4f46d6;
+
+        --success:      #15be53;
+        --success-text: #0b7a44;
+        --success-bg:   #eaf7f1;
+        --warn:         #9b6829;
+        --danger:       #ea2261;
+        --danger-text:  #b4233e;
+        --danger-bg:    #fbeeef;
+        --urgent:       #ef4444;
+
+        --amber-text: #b45309;
+        --amber-bg:   #fef3c7;
+        --blue-text:  #1d4ed8;
+        --blue-bg:    #eff6ff;
+        --gray-text:  #6b7280;
+        --gray-bg:    #f3f4f6;
+
+        --on-dark:       #ffffff;
+        --on-dark-muted: rgba(255, 255, 255, 0.72);
+        --dark-bg:       #1a1a1a;
+        --dark-bg-2:     #111113;
+
+        --font-display:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-body:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-mono:
+          "SourceCodePro", "Source Code Pro",
+          ui-monospace, "SF Mono", "JetBrains Mono",
+          Menlo, Monaco, Consolas, monospace;
+
+        --text-xs:   12px;
+        --text-sm:   14px;
+        --text-base: 16px;
+        --text-lg:   18px;
+        --text-xl:   22px;
+        --text-2xl:  28px;
+
+        --leading-body:     1.55;
+        --leading-tight:    1.1;
+        --tracking-display: -0.02em;
+
+        --space-1:  4px;
+        --space-2:  8px;
+        --space-3:  12px;
+        --space-4:  16px;
+        --space-5:  20px;
+        --space-6:  24px;
+        --space-8:  32px;
+        --space-12: 48px;
+
+        --radius-sm: 4px;
+        --radius-md: 6px;
+        --radius-lg: 8px;
+
+        --elev-flat:   none;
+        --elev-ring:   0 0 0 1px var(--border);
+        --elev-soft:
+          rgba(50, 50, 93, 0.06) 0px 6px 18px -6px,
+          rgba(0,   0,  0, 0.06) 0px 3px 8px  -4px;
+
+        --motion-fast:   150ms;
+        --motion-base:   200ms;
+        --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+        --ease-out:      cubic-bezier(0.16, 1, 0.3, 1);
+
+        /* ─── v2 color + motion ─────────────────────────────────── */
+        --gradient-primary: linear-gradient(135deg, #635bff 0%, #8b5cf6 100%);
+        --gradient-warm:    linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+        --gradient-cool:    linear-gradient(135deg, #06b6d4 0%, #635bff 100%);
+
+        --color-live:        #15be53;
+        --color-live-bg:      color-mix(in oklab, #15be53 10%, transparent);
+        --color-live-border:  color-mix(in oklab, #15be53 30%, transparent);
+        --color-live-text:    #0b7a44;
+
+        --color-hot:        #ff6b35;
+        --color-hot-bg:      color-mix(in oklab, #ff6b35 10%, transparent);
+        --color-hot-border:  color-mix(in oklab, #ff6b35 30%, transparent);
+        --color-hot-text:    #b53f15;
+
+        --color-ending:       #f59e0b;
+        --color-ending-bg:    color-mix(in oklab, #f59e0b 10%, transparent);
+        --color-ending-border: color-mix(in oklab, #f59e0b 30%, transparent);
+        --color-ending-text:  #9a6803;
+
+        --color-new:        #8b5cf6;
+        --color-new-bg:      color-mix(in oklab, #8b5cf6 10%, transparent);
+        --color-new-border:  color-mix(in oklab, #8b5cf6 30%, transparent);
+        --color-new-text:    #5b2fd1;
+
+        --color-premium:        #d4af37;
+        --color-premium-bg:      color-mix(in oklab, #d4af37 10%, transparent);
+        --color-premium-border:  color-mix(in oklab, #d4af37 30%, transparent);
+        --color-premium-text:    #8a6d1a;
+
+        --surface-lavender: #f5f3ff;
+        --surface-mint:     #ecfdf5;
+        --surface-peach:    #fff7ed;
+        --surface-sky:      #f0f9ff;
+
+        --motion-hover:  180ms cubic-bezier(0.4, 0, 0.2, 1);
+        --motion-enter:  260ms cubic-bezier(0.16, 1, 0.3, 1);
+        --motion-bounce: 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+
+        --sidebar-w: 240px;
+        --content-pad: 32px;
+
+        --focus-ring: 0 0 0 3px rgba(99, 91, 255, 0.28);
+      }
+
+      /* ─── Base ──────────────────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--font-body);
+        font-size: var(--text-base);
+        line-height: var(--leading-body);
+        font-weight: 400;
+        font-feature-settings: "ss01";
+        -webkit-font-smoothing: antialiased;
+      }
+      img { max-width: 100%; }
+      strong { font-weight: 600; }
+      a { color: var(--accent); text-decoration: none; }
+      button { font-family: inherit; }
+
+      .tnum { font-feature-settings: "tnum", "ss01"; }
+      .mono { font-family: var(--font-mono); font-feature-settings: "tnum"; }
+
+      :focus-visible {
+        outline: none;
+        box-shadow: var(--focus-ring);
+        border-radius: var(--radius-sm);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+        }
+      }
+
+      /* ─── App shell ─────────────────────────────────────────── */
+      .app { display: flex; min-height: 100vh; }
+
+      /* Sidebar */
+      .sidebar {
+        flex: none;
+        width: var(--sidebar-w);
+        background: var(--surface-side);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+      }
+
+      .side-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 20px 20px 16px;
+        font-weight: 600;
+        font-size: var(--text-lg);
+        letter-spacing: var(--tracking-display);
+      }
+      .side-brand svg { display: block; }
+      .side-brand .mark {
+        width: 28px; height: 28px;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 14px;
+        letter-spacing: 0;
+      }
+
+      .side-nav { flex: 1; padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+      .side-nav a {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 12px;
+        border-radius: 6px;
+        color: var(--fg-2);
+        font-size: var(--text-sm);
+        line-height: 1.2;
+        transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+      }
+      .side-nav a:hover { background: var(--surface-warm); color: var(--fg); }
+      .side-nav a[aria-current="page"] {
+        background: #eceaff;
+        color: var(--accent-active);
+        font-weight: 600;
+      }
+      .side-nav svg { flex: none; width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+      .side-nav a .count {
+        margin-left: auto;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+        background: var(--surface-warm);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 1px 8px;
+      }
+      .side-nav a[aria-current="page"] .count { color: var(--accent-active); background: #fff; }
+
+      .side-user {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--border);
+      }
+      .side-user .avatar {
+        flex: none;
+        width: 34px; height: 34px;
+        border-radius: 50%;
+        background: var(--dark-bg);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .side-user .usermeta { min-width: 0; }
+      .side-user .usermeta b { display: block; font-size: 13px; line-height: 1.3; color: var(--fg); }
+      .side-user .badge {
+        display: inline-block;
+        margin-top: 2px;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--accent-active);
+        background: #eceaff;
+        border-radius: 999px;
+        padding: 1px 8px;
+        line-height: 1.5;
+      }
+
+      /* Main */
+      .main { flex: 1; min-width: 0; }
+      .content { max-width: 1180px; margin-inline: auto; padding: 28px var(--content-pad) 56px; }
+
+      .page-head { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+      .page-head h1 { font-size: var(--text-xl); font-weight: 600; letter-spacing: var(--tracking-display); line-height: 1.2; margin: 0; }
+      .page-head .sub { margin-top: 4px; color: var(--muted); font-size: var(--text-sm); }
+      .head-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+      .range-picker { position: relative; }
+      .range-picker select {
+        appearance: none;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: #fff;
+        color: var(--fg-2);
+        font-size: var(--text-sm);
+        font-family: inherit;
+        padding: 8px 34px 8px 12px;
+        cursor: pointer;
+        transition: border-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
+      }
+      .range-picker select:hover { border-color: #d1d5db; }
+      .range-picker::after {
+        content: "";
+        position: absolute;
+        right: 14px; top: 50%;
+        width: 8px; height: 8px;
+        border-right: 1.5px solid var(--muted);
+        border-bottom: 1.5px solid var(--muted);
+        transform: translateY(-70%) rotate(45deg);
+        pointer-events: none;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border-radius: 6px;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        line-height: 1.2;
+        padding: 9px 16px;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+      }
+      .btn-primary { background: var(--accent); color: #fff; }
+      .btn-primary:hover { background: var(--accent-hover); }
+      .btn-primary:active { background: var(--accent-active); }
+      .btn-ghost { background: #fff; border-color: var(--border); color: var(--fg-2); }
+      .btn-ghost:hover { border-color: #d1d5db; color: var(--fg); }
+      .btn-danger {
+        background: #fff;
+        border-color: var(--danger-text);
+        color: var(--danger-text);
+      }
+      .btn-danger:hover { background: var(--danger-bg); }
+      .btn-resolve { background: var(--accent); color: #fff; }
+      .btn-resolve:hover { background: var(--gradient-primary); }
+      .btn-resolve:active { background: var(--accent-active); }
+
+      /* KPI cards */
+      .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .kpi {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 20px;
+        transition: transform var(--motion-hover), border-color var(--motion-hover);
+      }
+      .kpi:hover {
+        transform: translateY(-1px);
+        border-color: color-mix(in oklab, var(--accent) 15%, transparent);
+      }
+      .kpi.kpi-lavender { background: var(--surface-lavender); }
+      .kpi.kpi-sky      { background: var(--surface-sky); }
+      .kpi.kpi-mint     { background: var(--surface-mint); }
+      .kpi.kpi-peach    { background: var(--surface-peach); }
+      .kpi.kpi-urgent { border-left: 3px solid var(--danger); }
+      .kpi.kpi-urgent:hover { border-left-color: var(--danger); }
+      .kpi .label {
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+        margin-bottom: 8px;
+      }
+      .kpi .value {
+        font-size: var(--text-2xl);
+        font-weight: 600;
+        letter-spacing: var(--tracking-display);
+        line-height: 1.15;
+        font-feature-settings: "tnum", "ss01";
+      }
+      .kpi .value .unit { font-size: 16px; font-weight: 500; color: var(--fg-2); }
+      .kpi .value.danger { color: var(--danger-text); }
+      .kpi .delta { margin-top: 10px; font-size: 12px; color: var(--muted); }
+      .kpi .delta .up { color: var(--color-live-text); font-weight: 600; }
+      .kpi .delta .down { color: var(--danger-text); font-weight: 600; }
+      .kpi .delta .flat { font-weight: 500; }
+      .kpi .delta .amber { color: var(--amber-text); font-weight: 500; }
+
+      /* Cards */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+      }
+      .card-head {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 20px 24px 12px;
+        flex-wrap: wrap;
+      }
+      .card-head h2 { font-size: var(--text-lg); font-weight: 600; letter-spacing: var(--tracking-display); margin: 0; line-height: 1.2; }
+      .card-head .card-sub { margin-top: 2px; color: var(--muted); font-size: 13px; }
+      .card-extra { margin-left: auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+      .link-muted { color: var(--accent); font-size: var(--text-sm); font-weight: 500; }
+      .link-muted:hover { text-decoration: underline; }
+
+      .fee-chip {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--accent-active);
+        background: #eceaff;
+        border-radius: 999px;
+        padding: 3px 10px;
+        white-space: nowrap;
+      }
+
+      /* Layout columns */
+      .two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+
+      /* Chart */
+      .chart-body { padding: 8px 24px 20px; }
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        background: #fff;
+      }
+      .seg button {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        padding: 7px 14px;
+        font-size: 13px;
+        font-family: inherit;
+        color: var(--fg-2);
+        cursor: pointer;
+        border-right: 1px solid var(--border);
+        transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+      }
+      .seg button:last-child { border-right: 0; }
+      .seg button:hover { background: var(--surface-warm); }
+      .seg button[aria-pressed="true"] { background: #eceaff; color: var(--accent-active); font-weight: 600; }
+      .chart-wrap { width: 100%; }
+      .chart-wrap svg { display: block; width: 100%; height: auto; cursor: crosshair; }
+      .chart-range-note { color: var(--muted); font-size: 12px; margin-top: 6px; }
+
+      /* Table */
+      .tbl-scroll { overflow-x: auto; }
+      .tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+      .tbl thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--surface-warm);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        text-align: left;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      .tbl tbody td { padding: 12px 16px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; color: var(--fg-2); }
+      .tbl tbody tr:last-child td { border-bottom: 0; }
+      .tbl tbody tr { transition: background var(--motion-fast) var(--ease-standard); }
+      .tbl tbody tr:hover,
+      .tbl tbody tr.row-alt:hover { background: color-mix(in oklab, var(--accent) 2%, var(--surface)); }
+      .tbl tbody tr.row-alt { background: var(--surface-warm); }
+      .tbl tbody tr.row-dim td { opacity: 0.62; }
+
+      .prod { display: flex; align-items: center; gap: 12px; min-width: 0; }
+      .prod .thumb {
+        flex: none;
+        width: 48px; height: 48px;
+        border-radius: 6px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        background: var(--surface-warm);
+      }
+      .prod .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .prod .pname { display: block; font-weight: 500; color: var(--fg); line-height: 1.3; }
+      .prod a.pname:hover { text-decoration: underline; color: var(--accent-active); }
+      .prod .pid { display: block; font-size: 12px; color: var(--muted); }
+
+      .seller-cell { font-weight: 500; color: var(--fg); white-space: nowrap; }
+      .person-cell { white-space: nowrap; }
+      .price-cell { font-family: var(--font-mono); font-feature-settings: "tnum"; white-space: nowrap; font-weight: 500; color: var(--fg); }
+      .date-cell { font-feature-settings: "tnum"; white-space: nowrap; color: var(--muted); }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        border-radius: 999px;
+        padding: 3px 10px 3px 8px;
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1.5;
+        white-space: nowrap;
+      }
+      .status .dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+      .st-live    { color: var(--color-live-text); background: var(--surface-mint); }
+      .st-live .dot    { background: var(--color-live); }
+      .st-ending  { color: var(--color-hot-text); background: var(--surface-peach); }
+      .st-ending .dot { background: var(--color-hot); animation: dot-pulse 1.8s var(--ease-out) infinite; }
+      .st-done    { color: var(--gray-text); background: var(--gray-bg); }
+      .st-done .dot   { background: #9ca3af; }
+      .st-pending { color: var(--color-new-text); background: var(--surface-sky); }
+      .st-pending .dot { background: var(--color-new); }
+      @keyframes dot-pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.45; }
+      }
+
+      .row-actions { display: flex; gap: 14px; align-items: center; white-space: nowrap; }
+      .row-actions a { font-size: 13px; font-weight: 500; }
+      .row-actions a:hover { text-decoration: underline; }
+
+      .act {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        padding: 0;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        line-height: 1.2;
+      }
+      .act:hover { text-decoration: underline; }
+      .act-ok, .act-danger {
+        background-image: linear-gradient(currentColor, currentColor);
+        background-repeat: no-repeat;
+        background-size: 0 1px;
+        background-position: left bottom;
+        padding-bottom: 2px;
+        transition: color var(--motion-hover), background-size var(--motion-hover);
+      }
+      .act-ok:hover, .act-danger:hover { text-decoration: none; background-size: 100% 1px; }
+      .act-ok { color: var(--color-live-text); }
+      .act-ok:hover { color: var(--color-live); }
+      .act-danger { color: var(--danger-text); }
+      .act-danger:hover { color: var(--danger); }
+      .act:disabled { color: var(--muted); cursor: default; text-decoration: none; background-size: 0 1px; }
+
+      .tbl tbody tr.confirm-row { animation: confirm-in 200ms var(--ease-out); }
+      @keyframes confirm-in {
+        from { opacity: 0; transform: translateY(-6px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .tbl tbody tr.confirm-row td {
+        background: var(--surface-peach);
+        border-bottom: 1px solid var(--border);
+      }
+      .confirm-box .btn-primary:hover { background: var(--gradient-primary); }
+      .confirm-box .btn-danger:hover { background: var(--gradient-warm); color: #fff; border-color: transparent; }
+      .confirm-box .btn-ghost:hover { border-color: #9ca3af; color: var(--fg); }
+      .confirm-box {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        font-size: 13px;
+        color: var(--fg-2);
+      }
+      .confirm-box .confirm-msg { flex: 1; min-width: 220px; line-height: 1.45; }
+      .confirm-box .confirm-msg b { color: var(--fg); }
+      .confirm-box .confirm-btns { display: flex; gap: 10px; align-items: center; flex: none; }
+
+      .calm-note {
+        margin: 12px 24px 20px;
+        padding: 14px 16px;
+        border-radius: var(--radius-md);
+        background: var(--surface-warm);
+        border: 1px solid var(--border);
+        font-size: 13px;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .red-text {
+        display: block;
+        margin-top: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--danger-text);
+      }
+
+      .tbl tbody tr.overdue td:first-child { border-left: 3px solid var(--danger); }
+
+      /* Activity feed */
+      .feed-body { padding: 8px 24px 20px; }
+      .feed-list { list-style: none; margin: 0; padding: 0; }
+      .feed-list li {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px 8px;
+        margin: 0 -8px;
+        border-bottom: 1px solid var(--border-soft);
+        border-radius: var(--radius-md);
+        transition: background var(--motion-hover);
+      }
+      .feed-list li:last-child { border-bottom: 0; }
+      .feed-list li:hover { background: color-mix(in oklab, var(--accent) 2%, transparent); }
+      .feed-list li.is-new { animation: feed-in 560ms var(--ease-out) both; }
+      @keyframes feed-in {
+        from { opacity: 0; transform: translateY(-8px); background: var(--surface-mint); }
+        to { opacity: 1; transform: translateY(0); background: transparent; }
+      }
+      .feed-dot {
+        flex: none;
+        width: 8px; height: 8px;
+        border-radius: 50%;
+        margin-top: 7px;
+      }
+      .feed-dot.green { background: var(--color-live); }
+      .feed-dot.amber { background: var(--color-hot); }
+      .feed-dot.blue { background: var(--color-new); }
+      .feed-dot.neutral { background: #cbd5e1; }
+      .feed-text { flex: 1; min-width: 0; }
+      .feed-text b { display: block; font-size: var(--text-sm); font-weight: 500; line-height: 1.4; color: var(--fg); }
+      .feed-text .hint { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+      .feed-time {
+        flex: none;
+        font-family: var(--font-mono);
+        font-feature-settings: "tnum";
+        font-size: 12px;
+        color: var(--muted);
+        white-space: nowrap;
+        margin-top: 2px;
+        transition: color var(--motion-hover);
+      }
+      .feed-list li:hover .feed-time { color: var(--accent); }
+
+      /* Toast */
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        transform: translate(-50%, 16px);
+        background: var(--surface);
+        color: var(--fg-2);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        padding: 12px 18px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        box-shadow: var(--elev-soft);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--motion-enter), transform var(--motion-enter);
+        z-index: 60;
+      }
+      .toast.show { opacity: 1; transform: translate(-50%, 0); }
+      .toast.t-success { background: var(--surface-mint); border-left: 3px solid var(--color-live); color: var(--color-live-text); }
+      .toast.t-error { background: var(--surface-peach); border-left: 3px solid var(--color-hot); color: var(--color-hot-text); }
+
+      /* ─── Responsive ─────────────────────────────────────────── */
+      @media (max-width: 1080px) {
+        .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .two-col { grid-template-columns: minmax(0, 1fr); }
+      }
+
+      @media (max-width: 1024px) {
+        .app { flex-direction: column; }
+        .sidebar {
+          width: 100%;
+          height: auto;
+          position: static;
+          border-right: 0;
+          border-bottom: 1px solid var(--border);
+        }
+        .side-brand { padding: 14px 20px 10px; }
+        .side-nav {
+          flex-direction: row;
+          overflow-x: auto;
+          padding: 6px 12px 12px;
+          scrollbar-width: none;
+        }
+        .side-nav::-webkit-scrollbar { display: none; }
+        .side-nav a { flex: none; }
+        .side-nav a .count { display: none; }
+        .side-user { border-top: 0; padding: 10px 20px 14px; }
+        .content { padding-inline: 20px; }
+      }
+
+      @media (max-width: 640px) {
+        .kpi-grid { grid-template-columns: minmax(0, 1fr); }
+        .page-head { flex-direction: column; }
+        .head-actions { margin-left: 0; width: 100%; }
+        .head-actions .btn, .head-actions .range-picker { width: 100%; }
+        .head-actions select { width: 100%; }
+        .card-head { padding: 16px 16px 10px; }
+        .chart-body, .feed-body { padding-inline: 16px; }
+        .tbl thead th, .tbl tbody td { padding-inline: 12px; }
+        .calm-note { margin-inline: 16px; }
+        .confirm-box { align-items: flex-start; flex-direction: column; gap: 10px; }
+      }
+    </style>
+  
+
+    <!-- OD MICRO-INTERACTIONS START -->
+    <style data-micro-interactions="css">
+      /* Cross-page micro-interactions: focus ring, link slide underline,
+         button press, lazy image fade, dialog rise, scroll progress. */
+
+      :focus-visible {
+        outline: 2px solid var(--accent, #635bff);
+        outline-offset: 4px;
+        transition: outline-color 120ms ease;
+      }
+
+      /* Unify link underline into one animated system. !important suppresses
+         per-page text-decoration so only the slide underline renders; the
+         element-level background-image only affects painting, never layout. */
+      a {
+        text-decoration: none !important;
+        background-image: linear-gradient(currentColor, currentColor);
+        background-repeat: no-repeat;
+        background-position: 0 100%;
+        background-size: 0 1px;
+        background-origin: border-box;
+        transition:
+          background-size 150ms cubic-bezier(0.2, 0, 0, 1),
+          color 150ms ease,
+          background-color 150ms ease,
+          border-color 150ms ease,
+          opacity 150ms ease,
+          transform 150ms ease;
+      }
+      a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover {
+        background-size: 100% 1px;
+      }
+
+      button:not(.pwd-toggle):active,
+      .btn:active,
+      [role="button"]:active {
+        transform: scale(0.98);
+      }
+
+      @keyframes micro-rise {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      [role="dialog"] > *,
+      .drawer-inner > *,
+      .drawer-panel > * {
+        animation: micro-rise 260ms cubic-bezier(0.2, 0, 0, 1) both;
+      }
+      [role="dialog"] > * + *,
+      .drawer-inner > * + *,
+      .drawer-panel > * + * {
+        animation-delay: 50ms;
+      }
+
+      img[loading="lazy"] {
+        opacity: 0.8;
+        transition: opacity 260ms ease;
+      }
+      img[loading="lazy"].micro-loaded { opacity: 1; }
+
+      #scroll-progress {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%;
+        height: 2px;
+        transform: scaleX(var(--micro-prog, 0));
+        transform-origin: left center;
+        background: var(--accent, #635bff);
+        z-index: 1000;
+        pointer-events: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        a { background-image: none; }
+        a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover { background-size: 0 1px; }
+        button:not(.pwd-toggle):active,
+        .btn:active,
+        [role="button"]:active { transform: none; }
+        [role="dialog"] > *,
+        .drawer-inner > *,
+        .drawer-panel > * { animation: none; }
+        img[loading="lazy"] { opacity: 1; transition: none; }
+        #scroll-progress { transform: none; }
+      }
+    </style>
+    <!-- /OD MICRO-INTERACTIONS -->
+
+  </head>
+
+  <body>
+    <div class="app">
+      <!-- ─── Sidebar ─────────────────────────────────────────────── -->
+      <aside class="sidebar" aria-label="Điều hướng quản trị">
+        <a class="side-brand" href="index.html">
+          <span class="mark" aria-hidden="true">A</span>
+          AuctionHub
+        </a>
+
+        <nav class="side-nav" aria-label="Menu chính">
+          <a href="admin.html" aria-current="page">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+            Tổng quan
+          </a>
+          <a href="#pending-table">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m4 6 1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg>
+            Duyệt phiên
+            <span class="count" id="pending-nav-count">5</span>
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Người dùng
+          </a>
+          <a href="#dispute-table">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+            Tranh chấp
+            <span class="count" id="dispute-nav-count">3</span>
+          </a>
+          <a href="#fee-chart">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l4-4 4 4 3-3a4 4 0 0 0 3-1L21 9"/><path d="M21 9v4"/><path d="M21 9h-4"/></svg>
+            Doanh thu
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.02a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.02a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+            Cài đặt
+          </a>
+        </nav>
+
+        <div class="side-user">
+          <span class="avatar" aria-hidden="true">QH</span>
+          <div class="usermeta">
+            <b>Quản trị viên</b>
+            <span class="badge">Admin</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ─── Main ─────────────────────────────────────────────────── -->
+      <main class="main">
+        <div class="content">
+          <div class="page-head">
+            <div>
+              <h1>Tổng quan hệ thống</h1>
+              <p class="sub">Thứ Bảy, 19/09/2026. Có <span class="tnum" id="head-pending">5</span> phiên chờ duyệt và <span class="tnum" id="head-disputes">3</span> tranh chấp đang mở.</p>
+            </div>
+            <div class="head-actions">
+              <div class="range-picker">
+                <label for="range-select" class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Chọn khoảng thời gian</label>
+                <select id="range-select">
+                  <option value="7">7 ngày qua</option>
+                  <option value="30" selected>30 ngày qua</option>
+                  <option value="90">90 ngày qua</option>
+                </select>
+              </div>
+              <button type="button" class="btn btn-ghost">Xuất báo cáo</button>
+            </div>
+          </div>
+
+          <!-- KPI -->
+          <div class="kpi-grid">
+            <div class="kpi kpi-lavender">
+              <div class="label">Doanh thu nền tảng · phí 7%</div>
+              <div class="value">8.450.000<span class="unit">đ</span></div>
+              <div class="delta"><span class="up">↑ +14%</span> so với tháng trước</div>
+            </div>
+            <div class="kpi kpi-sky">
+              <div class="label">Phiên hoạt động</div>
+              <div class="value">156</div>
+              <div class="delta"><span class="flat">-3</span> so với tháng trước</div>
+            </div>
+            <div class="kpi kpi-mint">
+              <div class="label">Người dùng mới</div>
+              <div class="value">234</div>
+              <div class="delta"><span class="up">↑ +9%</span> so với tháng trước</div>
+            </div>
+            <div class="kpi kpi-peach kpi-urgent">
+              <div class="label">Tranh chấp mở</div>
+              <div class="value danger" id="dispute-kpi">3</div>
+              <div class="delta"><span class="amber" id="dispute-delta">+1 so với tuần trước</span></div>
+            </div>
+          </div>
+
+          <!-- Platform fee revenue chart -->
+          <section class="card" id="fee-chart" aria-label="Biểu đồ doanh thu nền tảng" style="margin-bottom:20px;">
+            <div class="card-head">
+              <div>
+                <h2>Doanh thu nền tảng</h2>
+                <p class="card-sub" id="chart-sub">Phí môi giới 7% mỗi phiên thành công</p>
+              </div>
+              <div class="card-extra">
+                <span class="fee-chip">Phí nền tảng 7%</span>
+                <div class="seg" role="group" aria-label="Khoảng thời gian biểu đồ">
+                  <button type="button" data-range="7" aria-pressed="false">7 ngày</button>
+                  <button type="button" data-range="30" aria-pressed="true">30 ngày</button>
+                  <button type="button" data-range="90" aria-pressed="false">90 ngày</button>
+                </div>
+              </div>
+            </div>
+            <div class="chart-body">
+              <div class="chart-wrap">
+                <svg id="revenue-chart" viewBox="0 0 720 240" role="img" aria-label="Biểu đồ doanh thu nền tảng"></svg>
+              </div>
+              <p class="chart-range-note" id="chart-note"></p>
+            </div>
+          </section>
+
+          <!-- Pending approval queue -->
+          <section class="card" aria-label="Phiên chờ duyệt" style="margin-bottom:20px;">
+            <div class="card-head">
+              <div>
+                <h2>Phiên chờ duyệt</h2>
+                <p class="card-sub" id="pending-sub">5 phiên chờ phê duyệt</p>
+              </div>
+              <div class="card-extra">
+                <a class="link-muted" href="#">Xem tất cả phiên &rarr;</a>
+              </div>
+            </div>
+            <div class="tbl-scroll">
+              <table class="tbl" id="pending-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Sản phẩm</th>
+                    <th scope="col">Người bán</th>
+                    <th scope="col">Giá khởi điểm</th>
+                    <th scope="col">Ngày tạo</th>
+                    <th scope="col">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody id="pending-rows">
+                  <tr data-pending-id="1">
+                    <td>
+                      <div class="prod">
+                        <span class="thumb"><img src="images/headphones.jpg" alt="" /></span>
+                        <span class="pmeta">
+                          <a class="pname" href="auction-detail.html">Sony WH-1000XM5</a>
+                          <span class="pid">#AU-1071</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="seller-cell">TechStore VN</td>
+                    <td class="price-cell">4.500.000đ</td>
+                    <td class="date-cell">19/09 · 09:12</td>
+                    <td>
+                      <div class="row-actions">
+                        <button type="button" class="act act-ok" data-act="approve">Duyệt</button>
+                        <button type="button" class="act act-danger" data-act="decline">Từ chối</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr data-pending-id="2">
+                    <td>
+                      <div class="prod">
+                        <span class="thumb"><img src="images/phone.jpg" alt="" /></span>
+                        <span class="pmeta">
+                          <a class="pname" href="auction-detail.html">Galaxy S24 Ultra 512GB</a>
+                          <span class="pid">#AU-1070</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="seller-cell">CellPhoneX</td>
+                    <td class="price-cell">18.900.000đ</td>
+                    <td class="date-cell">19/09 · 08:40</td>
+                    <td>
+                      <div class="row-actions">
+                        <button type="button" class="act act-ok" data-act="approve">Duyệt</button>
+                        <button type="button" class="act act-danger" data-act="decline">Từ chối</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr data-pending-id="3">
+                    <td>
+                      <div class="prod">
+                        <span class="thumb"><img src="images/tablet.jpg" alt="" /></span>
+                        <span class="pmeta">
+                          <a class="pname" href="auction-detail.html">iPad Pro 11 M4 256GB</a>
+                          <span class="pid">#AU-1069</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="seller-cell">FPT Shop</td>
+                    <td class="price-cell">21.500.000đ</td>
+                    <td class="date-cell">18/09 · 16:05</td>
+                    <td>
+                      <div class="row-actions">
+                        <button type="button" class="act act-ok" data-act="approve">Duyệt</button>
+                        <button type="button" class="act act-danger" data-act="decline">Từ chối</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr data-pending-id="4">
+                    <td>
+                      <div class="prod">
+                        <span class="thumb"><img src="images/mbp-front.jpg" alt="" /></span>
+                        <span class="pmeta">
+                          <a class="pname" href="auction-detail.html">MacBook Pro 14 M3 2023</a>
+                          <span class="pid">#AU-1068</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="seller-cell">TechStore VN</td>
+                    <td class="price-cell">28.000.000đ</td>
+                    <td class="date-cell">18/09 · 14:22</td>
+                    <td>
+                      <div class="row-actions">
+                        <button type="button" class="act act-ok" data-act="approve">Duyệt</button>
+                        <button type="button" class="act act-danger" data-act="decline">Từ chối</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr data-pending-id="5">
+                    <td>
+                      <div class="prod">
+                        <span class="thumb"><img src="images/laptop.jpg" alt="" /></span>
+                        <span class="pmeta">
+                          <a class="pname" href="auction-detail.html">Dell XPS 13 Plus</a>
+                          <span class="pid">#AU-1067</span>
+                        </span>
+                      </div>
+                    </td>
+                    <td class="seller-cell">Anh Khoa Store</td>
+                    <td class="price-cell">22.000.000đ</td>
+                    <td class="date-cell">18/09 · 10:07</td>
+                    <td>
+                      <div class="row-actions">
+                        <button type="button" class="act act-ok" data-act="approve">Duyệt</button>
+                        <button type="button" class="act act-danger" data-act="decline">Từ chối</button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="calm-note" id="queue-done" hidden>
+              Không còn phiên chờ duyệt. Phiên mới gửi từ người bán sẽ xuất hiện tại đây.
+            </p>
+          </section>
+
+          <div class="two-col">
+            <!-- Recent disputes -->
+            <section class="card" aria-label="Tranh chấp gần đây">
+              <div class="card-head">
+                <div>
+                  <h2>Tranh chấp gần đây</h2>
+                  <p class="card-sub" id="dispute-sub">3 tranh chấp đang mở</p>
+                </div>
+                <div class="card-extra">
+                  <a class="link-muted" href="#">Xem tất cả &rarr;</a>
+                </div>
+              </div>
+              <div class="tbl-scroll">
+                <table class="tbl" id="dispute-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Phiên</th>
+                      <th scope="col">Người mua</th>
+                      <th scope="col">Người bán</th>
+                      <th scope="col">Số tiền</th>
+                      <th scope="col">Trạng thái</th>
+                      <th scope="col">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="dispute-rows">
+                    <tr data-dispute-id="1" class="overdue">
+                      <td>
+                        <div class="prod">
+                          <span class="pmeta">
+                            <a class="pname" href="auction-detail.html">MacBook Pro 14 M3 2023</a>
+                            <span class="pid">#DS-301</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td class="person-cell">Nguyễn Văn A</td>
+                      <td class="seller-cell">TechStore VN</td>
+                      <td class="price-cell">35.500.000đ</td>
+                      <td>
+                        <span class="status st-ending"><span class="dot"></span>Đang mở</span>
+                        <span class="red-text">Mở 6 ngày · SLA 48h · Trễ 4 ngày</span>
+                      </td>
+                      <td>
+                        <div class="row-actions">
+                          <button type="button" class="btn btn-resolve" data-act="resolve">Giải quyết</button>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr data-dispute-id="2">
+                      <td>
+                        <div class="prod">
+                          <span class="pmeta">
+                            <a class="pname" href="auction-detail.html">AirPods Max 2024</a>
+                            <span class="pid">#DS-298</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td class="person-cell">Trần Thị B</td>
+                      <td class="seller-cell">CellPhoneX</td>
+                      <td class="price-cell">6.900.000đ</td>
+                      <td><span class="status st-ending"><span class="dot"></span>Đang mở</span></td>
+                      <td>
+                        <div class="row-actions">
+                          <button type="button" class="btn btn-resolve" data-act="resolve">Giải quyết</button>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr data-dispute-id="3">
+                      <td>
+                        <div class="prod">
+                          <span class="pmeta">
+                            <a class="pname" href="auction-detail.html">iPhone 15 Pro Max 256GB</a>
+                            <span class="pid">#DS-290</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td class="person-cell">Phạm Quốc C</td>
+                      <td class="seller-cell">Nhat Tao</td>
+                      <td class="price-cell">24.800.000đ</td>
+                      <td><span class="status st-live"><span class="dot"></span>Đã giải quyết</span></td>
+                      <td>
+                        <div class="row-actions">
+                          <a href="#">Chi tiết</a>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr data-dispute-id="4">
+                      <td>
+                        <div class="prod">
+                          <span class="pmeta">
+                            <a class="pname" href="auction-detail.html">iPad Pro 11 M4 256GB</a>
+                            <span class="pid">#DS-285</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td class="person-cell">Lê Duy D</td>
+                      <td class="seller-cell">FPT Shop</td>
+                      <td class="price-cell">21.500.000đ</td>
+                      <td><span class="status st-live"><span class="dot"></span>Đã giải quyết</span></td>
+                      <td>
+                        <div class="row-actions">
+                          <a href="#">Chi tiết</a>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <!-- Recent activity -->
+            <section class="card" aria-label="Hoạt động gần đây">
+              <div class="card-head">
+                <div>
+                  <h2>Hoạt động gần đây</h2>
+                  <p class="card-sub">Sự kiện trên toàn hệ thống</p>
+                </div>
+              </div>
+              <div class="feed-body">
+                <ul class="feed-list">
+                  <li>
+                    <span class="feed-dot green" aria-hidden="true"></span>
+                    <span class="feed-text">
+                      <b>Người dùng mới đăng ký</b>
+                      <span class="hint">minh.tran@gmail.com</span>
+                    </span>
+                    <span class="feed-time">09:15</span>
+                  </li>
+                  <li>
+                    <span class="feed-dot blue" aria-hidden="true"></span>
+                    <span class="feed-text">
+                      <b>Phiên mới chờ duyệt: Sony WH-1000XM5</b>
+                      <span class="hint">TechStore VN · giá khởi điểm 4.500.000đ</span>
+                    </span>
+                    <span class="feed-time">09:02</span>
+                  </li>
+                  <li>
+                    <span class="feed-dot neutral" aria-hidden="true"></span>
+                    <span class="feed-text">
+                      <b>Phiên kết thúc: MacBook Air 13 M3</b>
+                      <span class="hint">24 lượt bid · 32.400.000đ</span>
+                    </span>
+                    <span class="feed-time">08:48</span>
+                  </li>
+                  <li>
+                    <span class="feed-dot amber" aria-hidden="true"></span>
+                    <span class="feed-text">
+                      <b>Người mua mở lại tranh chấp</b>
+                      <span class="hint">#DS-301 · MacBook Pro 14 M3 2023</span>
+                    </span>
+                    <span class="feed-time">08:30</span>
+                  </li>
+                  <li>
+                    <span class="feed-dot green" aria-hidden="true"></span>
+                    <span class="feed-text">
+                      <b>Thanh toán escrow hoàn tất</b>
+                      <span class="hint">iPhone 14 Pro · 18.500.000đ</span>
+                    </span>
+                    <span class="feed-time">08:12</span>
+                  </li>
+                  <li>
+                    <span class="feed-dot neutral" aria-hidden="true"></span>
+                    <span class="feed-text">
+                      <b>Người dùng mới đăng ký</b>
+                      <span class="hint">nguyen.hoang@example.com</span>
+                    </span>
+                    <span class="feed-time">07:55</span>
+                  </li>
+                </ul>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        /* ── Shared range state: header select + chart segmented control ── */
+        var select = document.getElementById("range-select");
+        var segButtons = Array.prototype.slice.call(document.querySelectorAll(".seg button"));
+
+        var DATA = {
+          "7": {
+            labels: ["T2", "T3", "T4", "T5", "T6", "T7", "CN"],
+            values: [0.9, 1.1, 1.0, 1.2, 1.25, 1.4, 1.3],
+            sub: "Phí môi giới 7% mỗi ngày trong 7 ngày qua",
+            note: "Đơn vị triệu đồng."
+          },
+          "30": {
+            labels: ["22/08", "25/08", "28/08", "31/08", "03/09", "06/09", "09/09", "12/09", "15/09", "18/09"],
+            values: [0.4, 0.56, 0.48, 0.62, 0.55, 0.65, 0.62, 0.7, 0.66, 0.85],
+            sub: "Phí môi giới 7% mỗi ngày trong 30 ngày qua",
+            note: "Đơn vị triệu đồng. Tháng 9 dự kiến đạt 8,5 triệu đồng."
+          },
+          "90": {
+            labels: ["06/2026", "07/2026", "08/2026", "09/2026"],
+            values: [5.2, 6.15, 7.3, 8.45],
+            sub: "Phí môi giới 7% mỗi tháng trong 90 ngày qua",
+            note: "Đơn vị triệu đồng. Doanh thu tháng 9: 8,45 triệu đồng."
+          }
+        };
+
+        var NS = "http://www.w3.org/2000/svg";
+        var svg = document.getElementById("revenue-chart");
+
+        function getRange() {
+          return select.value;
+        }
+
+        function setRange(r) {
+          select.value = r;
+          segButtons.forEach(function (b) {
+            b.setAttribute("aria-pressed", String(b.getAttribute("data-range") === r));
+          });
+          drawChart(r);
+          document.getElementById("chart-sub").textContent = DATA[r].sub;
+        }
+
+        segButtons.forEach(function (b) {
+          b.addEventListener("click", function () {
+            setRange(b.getAttribute("data-range"));
+          });
+        });
+        select.addEventListener("change", function () {
+          setRange(select.value);
+        });
+
+        /* ── SVG chart: single gradient line + fading area fill, no gridlines ── */
+        var W = 720, H = 240;
+        var padL = 8, padR = 8, padT = 12, padB = 24;
+        var curData = null, curPts = null;
+
+        function drawChart(r) {
+          var d = DATA[r];
+          var innerW = W - padL - padR;
+          var innerH = H - padT - padB;
+
+          var n = d.values.length;
+          var maxV = Math.max.apply(null, d.values) * 1.12;
+
+          var pts = d.values.map(function (v, i) {
+            var x = n === 1 ? padL + innerW / 2 : padL + (i * innerW) / (n - 1);
+            var y = padT + innerH - (v / maxV) * innerH;
+            return { x: x, y: y };
+          });
+          curPts = pts;
+          curData = d;
+
+          var line = pts.map(function (p, i) {
+            return (i === 0 ? "M" : "L") + p.x.toFixed(1) + " " + p.y.toFixed(1);
+          }).join(" ");
+
+          var area =
+            line +
+            " L" + pts[pts.length - 1].x.toFixed(1) + " " + (H - padB).toFixed(1) +
+            " L" + pts[0].x.toFixed(1) + " " + (H - padB).toFixed(1) + " Z";
+
+          var labelStep = Math.ceil(n / 7);
+
+          svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+          svg.innerHTML = "";
+
+          var el;
+
+          /* single gradient for the line + fading area fill */
+          var defs = svgEl("defs");
+
+          var lineGrad = svgEl("linearGradient");
+          lineGrad.setAttribute("id", "chart-line-grad");
+          lineGrad.setAttribute("x1", "0"); lineGrad.setAttribute("y1", "0");
+          lineGrad.setAttribute("x2", "1"); lineGrad.setAttribute("y2", "0");
+          var s1 = svgEl("stop"); s1.setAttribute("offset", "0"); s1.setAttribute("stop-color", "#635bff");
+          var s2 = svgEl("stop"); s2.setAttribute("offset", "1"); s2.setAttribute("stop-color", "#8b5cf6");
+          lineGrad.appendChild(s1); lineGrad.appendChild(s2);
+          defs.appendChild(lineGrad);
+
+          var areaGrad = svgEl("linearGradient");
+          areaGrad.setAttribute("id", "chart-area-grad");
+          areaGrad.setAttribute("x1", "0"); areaGrad.setAttribute("y1", "0");
+          areaGrad.setAttribute("x2", "0"); areaGrad.setAttribute("y2", "1");
+          var a1 = svgEl("stop"); a1.setAttribute("offset", "0"); a1.setAttribute("stop-color", "rgba(99, 91, 255, 0.15)");
+          var a2 = svgEl("stop"); a2.setAttribute("offset", "1"); a2.setAttribute("stop-color", "rgba(99, 91, 255, 0)");
+          areaGrad.appendChild(a1); areaGrad.appendChild(a2);
+          defs.appendChild(areaGrad);
+
+          svg.appendChild(defs);
+
+          /* baseline */
+          el = svgEl("line");
+          el.setAttribute("x1", padL); el.setAttribute("y1", H - padB);
+          el.setAttribute("x2", W - padR); el.setAttribute("y2", H - padB);
+          el.setAttribute("stroke", "#e5e7eb"); el.setAttribute("stroke-width", "1");
+          svg.appendChild(el);
+
+          el = svgEl("path");
+          el.setAttribute("d", area);
+          el.setAttribute("fill", "url(#chart-area-grad)");
+          el.setAttribute("stroke", "none");
+          svg.appendChild(el);
+
+          el = svgEl("path");
+          el.setAttribute("d", line);
+          el.setAttribute("fill", "none");
+          el.setAttribute("stroke", "url(#chart-line-grad)");
+          el.setAttribute("stroke-width", "2");
+          el.setAttribute("stroke-linecap", "round");
+          el.setAttribute("stroke-linejoin", "round");
+          svg.appendChild(el);
+
+          /* last point: larger dot with a white ring */
+          var last = pts[pts.length - 1];
+          el = svgEl("circle");
+          el.setAttribute("cx", last.x.toFixed(1)); el.setAttribute("cy", last.y.toFixed(1));
+          el.setAttribute("r", "5.5");
+          el.setAttribute("fill", "#ffffff");
+          svg.appendChild(el);
+          el = svgEl("circle");
+          el.setAttribute("cx", last.x.toFixed(1)); el.setAttribute("cy", last.y.toFixed(1));
+          el.setAttribute("r", "3.5");
+          el.setAttribute("fill", "#635bff");
+          svg.appendChild(el);
+
+          /* y labels: max and 0 */
+          el = svgEl("text");
+          el.setAttribute("x", padL); el.setAttribute("y", padT + 6);
+          el.setAttribute("font-size", "11"); el.setAttribute("fill", "#9ca3af");
+          el.textContent = fmtnl(round1(maxV));
+          svg.appendChild(el);
+
+          el = svgEl("text");
+          el.setAttribute("x", padL); el.setAttribute("y", H - padB - 4);
+          el.setAttribute("font-size", "11"); el.setAttribute("fill", "#9ca3af");
+          el.textContent = "0";
+          svg.appendChild(el);
+
+          /* x labels */
+          pts.forEach(function (p, i) {
+            if (i % labelStep !== 0 && i !== n - 1) return;
+            el = svgEl("text");
+            el.setAttribute("x", p.x.toFixed(1));
+            el.setAttribute("y", H - padB + 16);
+            el.setAttribute("text-anchor", i === 0 ? "start" : i === n - 1 ? "end" : "middle");
+            el.setAttribute("font-size", "11");
+            el.setAttribute("fill", "#9ca3af");
+            el.textContent = d.labels[i];
+            svg.appendChild(el);
+          });
+
+          buildHoverLayer();
+
+          document.getElementById("chart-note").textContent = d.note;
+        }
+
+        /* hover: vertical guide + dark tooltip (no border) */
+        var hoverG = null, hoverTip = null, hoverTipRect = null, hoverTipText = null;
+        function buildHoverLayer() {
+          hoverG = svgEl("line");
+          hoverG.setAttribute("x1", "0"); hoverG.setAttribute("x2", "0");
+          hoverG.setAttribute("y1", padT); hoverG.setAttribute("y2", H - padB);
+          hoverG.setAttribute("stroke", "#d1d5db");
+          hoverG.setAttribute("stroke-width", "1");
+          hoverG.setAttribute("stroke-dasharray", "3 3");
+          hoverG.style.display = "none";
+          svg.appendChild(hoverG);
+
+          hoverTip = svgEl("g");
+          hoverTipRect = svgEl("rect");
+          hoverTipRect.setAttribute("rx", "4");
+          hoverTipRect.setAttribute("fill", "#1a1a1a");
+          hoverTipText = svgEl("text");
+          hoverTipText.setAttribute("font-size", "11");
+          hoverTipText.setAttribute("fill", "#ffffff");
+          hoverTipText.setAttribute("text-anchor", "middle");
+          hoverTip.appendChild(hoverTipRect);
+          hoverTip.appendChild(hoverTipText);
+          hoverTip.style.display = "none";
+          svg.appendChild(hoverTip);
+        }
+
+        function showHover(i) {
+          if (!curPts || !curData) return;
+          var p = curPts[i];
+          var txt = curData.labels[i] + ": " + fmtnl(curData.values[i]);
+          hoverG.setAttribute("x1", p.x.toFixed(1));
+          hoverG.setAttribute("x2", p.x.toFixed(1));
+          hoverG.style.display = "";
+
+          var w = txt.length * 6.5 + 16;
+          var x = Math.min(Math.max(p.x, w / 2 + padL), W - padR - w / 2);
+          var above = p.y - 40 >= padT;
+          var y = above ? p.y - 12 : p.y + 16;
+          hoverTipRect.setAttribute("x", (x - w / 2).toFixed(1));
+          hoverTipRect.setAttribute("y", (y - 17).toFixed(1));
+          hoverTipRect.setAttribute("width", w.toFixed(1));
+          hoverTipRect.setAttribute("height", "20");
+          hoverTipText.setAttribute("x", x.toFixed(1));
+          hoverTipText.setAttribute("y", (y - 3).toFixed(1));
+          hoverTipText.textContent = txt;
+          hoverTip.style.display = "";
+        }
+
+        function hideHover() {
+          if (hoverG) hoverG.style.display = "none";
+          if (hoverTip) hoverTip.style.display = "none";
+        }
+
+        svg.addEventListener("mousemove", function (e) {
+          if (!curPts) return;
+          var rect = svg.getBoundingClientRect();
+          var x = (e.clientX - rect.left) * (W / rect.width);
+          var best = 0, bd = Math.abs(curPts[0].x - x);
+          curPts.forEach(function (p, i) {
+            var dd = Math.abs(p.x - x);
+            if (dd < bd) { bd = dd; best = i; }
+          });
+          showHover(best);
+        });
+        svg.addEventListener("mouseleave", hideHover);
+
+        function svgEl(tag) {
+          return document.createElementNS(NS, tag);
+        }
+        function round1(v) {
+          return Math.round(v * 10) / 10;
+        }
+        function fmtnl(v) {
+          return String(v).replace(".", ",") + "tr";
+        }
+
+        drawChart(getRange());
+
+        /* ── Toast ── */
+        var toast = document.getElementById("toast");
+        var toastTimer = null;
+        function showToast(msg, kind) {
+          toast.textContent = msg;
+          toast.classList.remove("t-success", "t-error");
+          if (kind) toast.classList.add(kind === "error" ? "t-error" : "t-success");
+          toast.classList.add("show");
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(function () {
+            toast.classList.remove("show");
+          }, 2600);
+        }
+
+        /* ── Esc closes any open confirm row ── */
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape") {
+            closeConfirmRows();
+          }
+        });
+
+        /* ── Confirm row helpers ── */
+        function closeConfirmRows() {
+          Array.prototype.forEach.call(
+            document.querySelectorAll("tr.confirm-row"),
+            function (tr) { tr.remove(); }
+          );
+        }
+
+        function openConfirmRow(afterRow, colspan, messageHtml, confirmLabel, onConfirm, confirmClass) {
+          closeConfirmRows();
+          var tr = document.createElement("tr");
+          tr.className = "confirm-row";
+          tr.innerHTML =
+            '<td colspan="' + colspan + '">' +
+            '<div class="confirm-box">' +
+            '<span class="confirm-msg">' + messageHtml + "</span>" +
+            '<span class="confirm-btns">' +
+            '<button type="button" class="btn btn-' + (confirmClass || "primary") + '" data-confirm="yes">' + confirmLabel + "</button>" +
+            '<button type="button" class="btn btn-ghost" data-confirm="no">Hủy</button>' +
+            "</span>" +
+            "</div></td>";
+          afterRow.insertAdjacentElement("afterend", tr);
+          tr.addEventListener("click", function (e) {
+            var b = e.target.closest("button[data-confirm]");
+            if (!b) return;
+            if (b.getAttribute("data-confirm") === "no") {
+              tr.remove();
+              return;
+            }
+            tr.remove();
+            onConfirm();
+          });
+          var yesBtn = tr.querySelector('button[data-confirm="yes"]');
+          if (yesBtn) { setTimeout(function () { yesBtn.focus(); }, 60); }
+        }
+
+        function pad2(v) { return String(v).padStart(2, "0"); }
+        function nowHm() {
+          var n = new Date();
+          return pad2(n.getHours()) + ":" + pad2(n.getMinutes());
+        }
+
+        /* ── Feed: slide-in a new activity ── */
+        function prependFeed(label, hint, dotClass) {
+          var ul = document.querySelector(".feed-list");
+          if (!ul) return;
+          var li = document.createElement("li");
+          li.className = "is-new";
+          li.innerHTML =
+            '<span class="feed-dot ' + dotClass + '" aria-hidden="true"></span>' +
+            '<span class="feed-text"><b>' + label + '</b><span class="hint">' + hint + "</span></span>" +
+            '<span class="feed-time">' + nowHm() + "</span>";
+          ul.insertBefore(li, ul.firstChild);
+        }
+
+        /* ── Pending queue: approve / decline ── */
+        var pendingTbody = document.getElementById("pending-rows");
+        var pendingCount = 5;
+        var pendingNav = document.getElementById("pending-nav-count");
+        var pendingSub = document.getElementById("pending-sub");
+        var headPending = document.getElementById("head-pending");
+        var queueDone = document.getElementById("queue-done");
+
+        function updatePendingCount() {
+          pendingNav.textContent = String(pendingCount);
+          pendingSub.textContent = pendingCount + " phiên chờ phê duyệt";
+          headPending.textContent = String(pendingCount);
+          queueDone.hidden = pendingCount !== 0;
+        }
+
+        pendingTbody.addEventListener("click", function (e) {
+          var btn = e.target.closest("button.act");
+          if (!btn) return;
+          var tr = btn.closest("tr[data-pending-id]");
+          if (!tr || tr.classList.contains("row-dim")) return;
+
+          var rowActions = tr.querySelector(".row-actions");
+          var name = tr.querySelector(".pname").textContent;
+
+          if (btn.getAttribute("data-act") === "approve") {
+            rowActions.innerHTML =
+              '<span class="status st-live"><span class="dot"></span>Đã duyệt · ' + nowHm() + "</span>";
+            pendingCount = Math.max(0, pendingCount - 1);
+            updatePendingCount();
+            showToast("Đã duyệt phiên '" + name + "'. Phiên sẽ bắt đầu theo lịch.", "success");
+          } else {
+            openConfirmRow(
+              tr,
+              5,
+              "Từ chối phiên <b>" + name + "</b>? Người bán sẽ nhận thông báo và có thể chỉnh sửa để gửi lại.",
+              "Từ chối phiên",
+              function () {
+                rowActions.innerHTML =
+                  '<span class="status st-done"><span class="dot"></span>Đã từ chối · ' + nowHm() + "</span>";
+                tr.classList.add("row-dim");
+                pendingCount = Math.max(0, pendingCount - 1);
+                updatePendingCount();
+                showToast("Đã từ chối phiên '" + name + "'. Người bán đã được thông báo.", "success");
+              },
+              "danger"
+            );
+          }
+        });
+
+        /* ── Disputes: resolve ── */
+        var disputeTbody = document.getElementById("dispute-rows");
+        var openDisputes = 3;
+        var disputeNav = document.getElementById("dispute-nav-count");
+        var disputeKpi = document.getElementById("dispute-kpi");
+        var disputeDelta = document.getElementById("dispute-delta");
+        var disputeSub = document.getElementById("dispute-sub");
+        var headDisputes = document.getElementById("head-disputes");
+
+        function updateDisputeCount() {
+          disputeNav.textContent = String(openDisputes);
+          disputeSub.textContent = openDisputes + " tranh chấp đang mở";
+          headDisputes.textContent = String(openDisputes);
+          if (openDisputes === 0) {
+            disputeKpi.classList.remove("danger");
+            disputeDelta.className = "flat";
+            disputeDelta.textContent = "Tất cả đã được giải quyết";
+          } else {
+            disputeKpi.classList.add("danger");
+            disputeDelta.className = "amber";
+            disputeDelta.textContent = "+1 so với tuần trước";
+          }
+        }
+
+        disputeTbody.addEventListener("click", function (e) {
+          var btn = e.target.closest("button.act");
+          if (!btn) return;
+          var tr = btn.closest("tr[data-dispute-id]");
+          if (!tr) return;
+
+          var rowActions = tr.querySelector(".row-actions");
+          var id = tr.querySelector(".pid").textContent;
+
+          openConfirmRow(
+            tr,
+            6,
+            "Xác nhận giải quyết tranh chấp " + id + "? Số tiền đang giữ trong escrow sẽ được chuyển về theo kết luận.",
+            "Xác nhận",
+            function () {
+              var stCell = tr.querySelector("td:nth-child(5)");
+              stCell.innerHTML = '<span class="status st-live"><span class="dot"></span>Đã giải quyết</span>';
+              rowActions.innerHTML = '<a href="#">Chi tiết</a>';
+              openDisputes = Math.max(0, openDisputes - 1);
+              updateDisputeCount();
+              prependFeed(
+                "Xử lý " + id + " hoàn tất",
+                "Escrow đã được chuyển theo kết luận",
+                "amber"
+              );
+              showToast("Đã giải quyết " + id + ". Cả hai bên sẽ nhận được thông báo.", "success");
+            },
+            "primary"
+          );
+        });
+      })();
+    </script>
+  
+
+    <script data-micro-interactions="js">
+      (function () {
+        var lazy = document.querySelectorAll('img[loading="lazy"]');
+        for (var i = 0; i < lazy.length; i++) {
+          (function (img) {
+            if (img.complete) { img.classList.add("micro-loaded"); return; }
+            img.addEventListener("load", function () {
+              img.classList.add("micro-loaded");
+            });
+          })(lazy[i]);
+        }
+
+        var bar = document.getElementById("scroll-progress");
+        if (!bar) return;
+        function paint() {
+          var doc = document.documentElement;
+          var max = doc.scrollHeight - window.innerHeight;
+          var p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+          bar.style.setProperty("--micro-prog", p.toFixed(4));
+        }
+        window.addEventListener("scroll", paint, { passive: true });
+        window.addEventListener("resize", paint);
+        paint();
+      })();
+    </script>
+
+  </body>
+</html>

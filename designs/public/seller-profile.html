@@ -1,0 +1,1500 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TechStore VN | AuctionHub</title>
+    <meta
+      name="description"
+      content="Hồ sơ người bán TechStore VN trên AuctionHub: 12 phiên đang bán, 318 phiên đã bán, 1.240 đánh giá trung bình 4.8 sao. Chuyên thiết bị Apple cũ Like New tại TP.HCM."
+    />
+
+    <style>
+      /* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio.
+         Put this @layer first; product CSS outside the layer always wins. */
+      @layer od-layout {
+        :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+
+        /* containers */
+        .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+        .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+        .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+        .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+        .od-fill    { flex: 1 1 0; min-width: 0; }
+        .od-fixed   { flex: none; }
+        .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+
+        /* stacked information: each piece is its own line — never sibling inline spans */
+        .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+        :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+        .od-tile { display: grid; grid-template-rows: auto 1fr; }
+        :where(.od-tile) > :where(*) { display: block; }
+
+        /* media keeps its intrinsic ratio by default; never a distorted or cropped
+           cover by accident. height:auto lets the ratio win over an <img height="…">
+           attribute. Cropping to a uniform box is an explicit opt-in: set --od-ratio
+           AND add .od-media-cover together (per the core rule, only where a crop is
+           deliberate — tile thumbs, decorative fills — never on full-frame content). */
+        .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+        .od-media-cover { object-fit: cover; }
+
+        /* data text only — authored copy is rewritten to its budget instead */
+        .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+        .od-clamp-2 { -webkit-line-clamp: 2; }
+        .od-clamp-3 { -webkit-line-clamp: 3; }
+        .od-lines-2 { min-height: calc(2 * 1.4em); }   /* block-level reservation for a shared baseline */
+        .od-nowrap  { white-space: nowrap; }           /* 数字+单位 · 价格+起 · 日期+星期 */
+        .od-keep    { word-break: keep-all; overflow-wrap: anywhere; } /* CJK labels break at spaces / <wbr> first */
+
+        /* screen skeleton (optional): bars take their own space, the middle scrolls — no padding guessed for chrome */
+        .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+        .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+
+        /* horizontal rail: the next item peeks at the edge; trailing room survives overflow */
+        .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+                   padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+        .od-rail::-webkit-scrollbar { display: none; }
+        :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+        :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+
+        .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+        .od-touch  { min-width: 44px; min-height: 44px; }
+      }
+      /* /OD-LAYOUT-PRIMITIVES v1 */
+
+      /* ─── Design tokens ─────────────────────────────────────────────
+         Shared Stripe schema, resolved per the AuctionHub brief:
+         accent #635BFF, background #FFFFFF / #FAFAFA, charcoal text
+         #1A1A1A. Nội dung chỉ tham chiếu qua var(--name). */
+      :root {
+        --bg:           #ffffff;
+        --surface:      #ffffff;
+        --surface-warm: #fafafa;
+        --surface-side: #f9fafb;
+
+        --fg:    #1a1a1a;
+        --fg-2:  #374151;
+        --muted: #6b7280;
+        --meta:  var(--muted);
+
+        --border:      #e5e7eb;
+        --border-soft: var(--border);
+
+        --accent:    #635bff;
+        --accent-on: #ffffff;
+
+        --accent-hover:  #5851df;
+        --accent-active: #4f46d6;
+
+        --success:      #15be53;
+        --success-text: #0b7a44;
+        --success-bg:   #eaf7f1;
+        --warn:         #9b6829;
+        --danger:       #ea2261;
+        --danger-text:  #b4233e;
+        --danger-bg:    #fbeeef;
+        --urgent:       #ef4444;
+
+        --blue-text:  #1d4ed8;
+        --blue-bg:    #eff6ff;
+        --gray-text:  #6b7280;
+        --gray-bg:    #f3f4f6;
+
+        --on-dark:       #ffffff;
+        --on-dark-muted: rgba(255, 255, 255, 0.72);
+        --dark-bg:       #1a1a1a;
+        --dark-bg-2:     #111113;
+
+        --font-display:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-body:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-mono:
+          "SourceCodePro", "Source Code Pro",
+          ui-monospace, "SF Mono", "JetBrains Mono",
+          Menlo, Monaco, Consolas, monospace;
+
+        --text-xs:   12px;
+        --text-sm:   14px;
+        --text-base: 17px;
+        --text-lg:   19px;
+        --text-xl:   24px;
+        --text-2xl:  32px;
+        --text-3xl:  46px;
+
+        --leading-body:     1.55;
+        --leading-tight:    1.1;
+        --tracking-display: -0.02em;
+
+        --space-1:  4px;
+        --space-2:  8px;
+        --space-3:  12px;
+        --space-4:  16px;
+        --space-5:  20px;
+        --space-6:  24px;
+        --space-8:  32px;
+        --space-12: 48px;
+
+        --radius-sm: 4px;
+        --radius-md: 6px;
+        --radius-lg: 8px;
+
+        --elev-flat:   none;
+        --elev-ring:   0 0 0 1px var(--border);
+        --elev-soft:
+          rgba(50, 50, 93, 0.06) 0px 6px 18px -6px,
+          rgba(0,   0,  0, 0.06) 0px 3px 8px  -4px;
+        --elev-raised:
+          rgba(50, 50, 93, 0.16) 0px 24px 40px -28px,
+          rgba(0,   0,  0, 0.10) 0px 16px 32px -18px;
+
+        --motion-fast:   150ms;
+        --motion-base:   200ms;
+        --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+        --container-max:            1080px;
+        --container-gutter-desktop: 32px;
+        --container-gutter-tablet:  24px;
+        --container-gutter-phone:   20px;
+
+        --focus-ring: 0 0 0 3px rgba(99, 91, 255, 0.28);
+      }
+
+      /* ─── Base ─────────────────────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; }
+      html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--font-body);
+        font-size: var(--text-base);
+        line-height: var(--leading-body);
+        font-weight: 400;
+        font-feature-settings: "ss01";
+        -webkit-font-smoothing: antialiased;
+      }
+      strong { font-weight: 600; }
+      img { max-width: 100%; }
+
+      .tnum { font-feature-settings: "tnum", "ss01"; }
+
+      .container {
+        max-width: var(--container-max);
+        margin-inline: auto;
+        padding-inline: var(--container-gutter-desktop);
+      }
+
+      h1, h2, h3 {
+        font-family: var(--font-display);
+        font-weight: 300;
+        line-height: var(--leading-tight);
+        letter-spacing: var(--tracking-display);
+        color: var(--fg);
+        margin: 0;
+      }
+      h1 { font-size: clamp(34px, 3.4vw, 44px); letter-spacing: -0.02em; }
+      p { margin: 0; }
+
+      a {
+        color: var(--fg);
+        text-decoration: underline;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+        font-feature-settings: "ss01";
+        transition: color var(--motion-fast) var(--ease-standard);
+      }
+      a:hover { color: var(--fg-2); }
+
+      /* ─── Buttons ──────────────────────────────────────────────── */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        padding: 10px 18px;
+        border-radius: var(--radius-sm);
+        font-family: var(--font-display);
+        font-feature-settings: "ss01";
+        font-weight: 500;
+        font-size: var(--text-base);
+        line-height: 1;
+        cursor: pointer;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--fg);
+        text-decoration: none;
+        min-height: 44px;
+        transition:
+          background-color var(--motion-fast) var(--ease-standard),
+          border-color var(--motion-fast) var(--ease-standard),
+          color var(--motion-fast) var(--ease-standard),
+          box-shadow var(--motion-fast) var(--ease-standard);
+      }
+      .btn:focus-visible,
+      .tabs button:focus-visible,
+      .chips button:focus-visible,
+      .rating-link:focus-visible,
+      .review-row a:focus-visible,
+      a:focus-visible {
+        outline: 2px solid var(--fg-2);
+        outline-offset: 2px;
+      }
+
+      .btn-primary {
+        background: var(--accent);
+        color: var(--accent-on);
+      }
+      .btn-primary:hover  { background: var(--accent-hover); color: var(--accent-on); }
+      .btn-primary:active { background: var(--accent-active); color: var(--accent-on); }
+
+      .btn-ghost {
+        background: transparent;
+        color: var(--fg);
+        border-color: var(--border);
+      }
+      .btn-ghost:hover {
+        background: var(--surface-warm);
+        color: var(--fg);
+        border-color: #d1d5db;
+      }
+
+      /* ─── Site header ──────────────────────────────────────────── */
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: rgba(255, 255, 255, 0.92);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border);
+      }
+      .site-header .container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-4);
+        height: 72px;
+      }
+      .brand {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 2px;
+        font-family: var(--font-display);
+        font-feature-settings: "ss01";
+        font-size: 19px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--fg);
+        text-decoration: none;
+      }
+      .brand:hover { color: var(--fg); }
+      .brand-dot { color: var(--accent); }
+
+      .nav { display: flex; align-items: center; gap: var(--space-3); }
+      .nav-link {
+        text-decoration: none;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--fg-2);
+        border-radius: var(--radius-sm);
+        display: inline-flex;
+        align-items: center;
+        min-height: 40px;
+      }
+      .nav-link:hover { color: var(--fg); }
+
+      /* ─── Breadcrumb ───────────────────────────────────────────── */
+      .crumbs {
+        padding-block: var(--space-5) 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-2);
+        font-size: var(--text-sm);
+        color: var(--muted);
+      }
+      .crumbs a { color: var(--muted); text-decoration: none; }
+      .crumbs a:hover { color: var(--fg); }
+      .crumbs .sep { color: #d1d5db; }
+
+      /* ─── Profile header ───────────────────────────────────────── */
+      .profile-section { padding-block: var(--space-6) var(--space-6); }
+      .profile-head {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: var(--space-5);
+      }
+      .avatar-profile {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #ffffff;
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .profile-id { display: grid; gap: 6px; min-width: 0; }
+      .profile-name {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        flex-wrap: wrap;
+      }
+      .profile-name h1 { display: inline; }
+      .verified-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: var(--text-xs);
+        font-weight: 600;
+        color: var(--blue-text);
+        background: var(--blue-bg);
+        border-radius: var(--radius-sm);
+        padding: 3px 8px;
+        line-height: 1.4;
+      }
+      .verified-badge svg { width: 12px; height: 12px; }
+      .rating-link {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 6px;
+        width: max-content;
+        font-size: var(--text-base);
+        font-weight: 500;
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .rating-link:hover { color: var(--accent-hover); text-decoration: underline; }
+      .profile-facts {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2) var(--space-6);
+      }
+      .profile-facts li {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: var(--text-sm);
+        color: var(--fg-2);
+      }
+      .profile-facts svg { width: 15px; height: 15px; color: var(--muted); flex-shrink: 0; }
+      .profile-actions {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+      }
+      .follow-count { font-feature-settings: "tnum", "ss01"; }
+
+      /* ─── Tabs ─────────────────────────────────────────────────── */
+      .tabs {
+        display: flex;
+        gap: 4px;
+        border-bottom: 1px solid var(--border);
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .tabs::-webkit-scrollbar { display: none; }
+      .tabs button {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        padding: 12px 16px;
+        font: inherit;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--fg-2);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        white-space: nowrap;
+        transition: color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+      }
+      .tabs button:hover { color: var(--fg); }
+      .tabs button[aria-selected="true"] {
+        color: var(--accent-active);
+        font-weight: 600;
+        border-bottom-color: var(--accent);
+      }
+      .tabs .tcount {
+        display: inline-block;
+        margin-left: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        font-feature-settings: "tnum", "ss01";
+        color: var(--muted);
+        background: var(--gray-bg);
+        border-radius: 999px;
+        padding: 1px 8px;
+        line-height: 1.5;
+      }
+      .tabs button[aria-selected="true"] .tcount { color: var(--accent-active); background: #eceaff; }
+
+      .tab-panel { padding-block: var(--space-8) var(--space-12); }
+      .tab-note { font-size: var(--text-sm); color: var(--muted); margin-block-end: var(--space-5); }
+
+      /* ─── Đang bán: lưới 3 cột ─────────────────────────────────── */
+      .sale-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--space-5);
+      }
+      .sale-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: box-shadow var(--motion-base) var(--ease-standard), border-color var(--motion-base) var(--ease-standard);
+      }
+      .sale-card:hover { box-shadow: var(--elev-soft); border-color: #d7dae0; }
+      .sale-card .media { padding: var(--space-3) var(--space-3) 0; }
+      .sale-card .media img {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        border-radius: var(--radius-md);
+        background: var(--surface-warm);
+      }
+      .sale-body {
+        padding: var(--space-3) var(--space-4) var(--space-4);
+        display: grid;
+        gap: var(--space-3);
+        flex: 1;
+      }
+      .sale-card .card-title {
+        font-family: var(--font-display);
+        font-size: 17px;
+        font-weight: 500;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+        color: var(--fg);
+      }
+      .sale-price-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: var(--space-3);
+      }
+      .price-grid { display: grid; gap: 2px; }
+      .price-label { font-size: var(--text-xs); color: var(--muted); }
+      .sale-price {
+        font-family: var(--font-display);
+        font-feature-settings: "tnum", "ss01";
+        font-weight: 500;
+        font-size: 20px;
+        color: var(--fg);
+        white-space: nowrap;
+      }
+      .countdown-wrap { display: grid; gap: 2px; justify-items: end; text-align: right; }
+      .countdown-time {
+        font-family: var(--font-mono);
+        font-feature-settings: "tnum";
+        font-size: var(--text-xs);
+        color: var(--fg-2);
+        min-height: 1.4em;
+        white-space: nowrap;
+      }
+      .sale-card .btn { width: 100%; }
+
+      /* ─── Đã bán: danh sách ────────────────────────────────────── */
+      .sold-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+      }
+      .sold-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto auto;
+        align-items: center;
+        gap: var(--space-4);
+        padding: var(--space-3) var(--space-5);
+        background: var(--surface);
+      }
+      .sold-row + .sold-row { border-top: 1px solid var(--border); }
+      .sold-row:nth-child(even) { background: var(--surface-warm); }
+      .sold-thumb {
+        width: 56px;
+        height: 42px;
+        border-radius: var(--radius-sm);
+        object-fit: cover;
+        background: var(--surface-warm);
+        display: block;
+      }
+      .sold-info { display: grid; gap: 2px; min-width: 0; }
+      .sold-title {
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: var(--text-base);
+        color: var(--fg);
+        line-height: 1.3;
+      }
+      .sold-meta { font-size: var(--text-sm); color: var(--muted); }
+      .sold-winner { font-size: var(--text-sm); color: var(--fg-2); white-space: nowrap; }
+      .sold-price {
+        font-family: var(--font-display);
+        font-feature-settings: "tnum", "ss01";
+        font-weight: 500;
+        font-size: var(--text-base);
+        color: var(--fg);
+        white-space: nowrap;
+      }
+
+      /* ─── Đánh giá ─────────────────────────────────────────────── */
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2);
+        margin-block-end: var(--space-6);
+      }
+      .chips button {
+        appearance: none;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--fg-2);
+        font: inherit;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        border-radius: 999px;
+        padding: 8px 16px;
+        cursor: pointer;
+        min-height: 40px;
+        transition:
+          background-color var(--motion-fast) var(--ease-standard),
+          border-color var(--motion-fast) var(--ease-standard),
+          color var(--motion-fast) var(--ease-standard);
+      }
+      .chips button:hover { color: var(--fg); border-color: #d1d5db; }
+      .chips button[aria-pressed="true"] {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-on);
+      }
+      .review-list { display: grid; gap: var(--space-5); }
+      .review-card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: var(--space-5);
+        background: var(--surface);
+        display: grid;
+        gap: var(--space-3);
+      }
+      .review-head {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+      }
+      .review-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--surface-warm);
+        border: 1px solid var(--border);
+        color: var(--fg-2);
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .review-by { display: grid; gap: 1px; min-width: 0; }
+      .review-name { font-weight: 500; font-size: var(--text-sm); color: var(--fg); }
+      .review-meta { font-size: var(--text-xs); color: var(--muted); }
+      .review-stars {
+        margin-inline-start: auto;
+        font-size: var(--text-sm);
+        color: var(--warn);
+        letter-spacing: 1px;
+        white-space: nowrap;
+      }
+      .review-text {
+        font-size: var(--text-base);
+        color: var(--fg-2);
+        line-height: var(--leading-body);
+      }
+
+      /* ─── Giới thiệu ───────────────────────────────────────────── */
+      .about { max-width: 66ch; display: grid; gap: var(--space-5); }
+      .about-desc {
+        font-size: var(--text-lg);
+        line-height: var(--leading-body);
+        color: var(--fg-2);
+      }
+      .about-label {
+        font-size: var(--text-xs);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--muted);
+      }
+      .about-pills { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+      .about-pills span {
+        font-size: var(--text-sm);
+        color: var(--fg-2);
+        background: var(--surface-warm);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 6px 14px;
+      }
+      .policy-card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: var(--space-5);
+        background: var(--surface);
+        display: grid;
+        gap: 4px;
+      }
+      .policy-card .policy-value { font-weight: 500; color: var(--fg); }
+      .policy-card .policy-note { font-size: var(--text-sm); color: var(--muted); }
+
+      /* ─── Footer ───────────────────────────────────────────────── */
+      .site-footer {
+        border-top: 1px solid var(--border);
+        background: var(--surface-warm);
+        padding-block: var(--space-6);
+      }
+      .site-footer .container {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-3);
+        font-size: var(--text-sm);
+        color: var(--muted);
+      }
+      .site-footer a { color: var(--fg-2); text-decoration: none; font-weight: 500; }
+      .site-footer a:hover { color: var(--fg); }
+
+      /* ─── Toast ────────────────────────────────────────────────── */
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        transform: translate(-50%, 16px);
+        background: var(--dark-bg);
+        color: #fff;
+        font-size: var(--text-sm);
+        padding: 11px 18px;
+        border-radius: 8px;
+        box-shadow: var(--elev-soft);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--motion-base) var(--ease-standard), transform var(--motion-base) var(--ease-standard);
+        z-index: 60;
+        max-width: min(90vw, 560px);
+      }
+      .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+      /* ─── Responsive ───────────────────────────────────────────── */
+      @media (max-width: 900px) {
+        .sale-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .profile-head { grid-template-columns: auto minmax(0, 1fr); }
+        .profile-actions { grid-column: 1 / -1; }
+      }
+      @media (max-width: 640px) {
+        .container { padding-inline: var(--container-gutter-phone); }
+        .sale-grid { grid-template-columns: 1fr; }
+        .nav { display: none; }
+        .sold-row { grid-template-columns: auto minmax(0, 1fr) auto; }
+        .sold-winner { grid-column: 2 / -1; }
+      }
+    </style>
+  
+
+    <!-- OD MICRO-INTERACTIONS START -->
+    <style data-micro-interactions="css">
+      /* Cross-page micro-interactions: focus ring, link slide underline,
+         button press, lazy image fade, dialog rise, scroll progress. */
+
+      :focus-visible {
+        outline: 2px solid var(--accent, #635bff);
+        outline-offset: 4px;
+        transition: outline-color 120ms ease;
+      }
+
+      /* Unify link underline into one animated system. !important suppresses
+         per-page text-decoration so only the slide underline renders; the
+         element-level background-image only affects painting, never layout. */
+      a {
+        text-decoration: none !important;
+        background-image: linear-gradient(currentColor, currentColor);
+        background-repeat: no-repeat;
+        background-position: 0 100%;
+        background-size: 0 1px;
+        background-origin: border-box;
+        transition:
+          background-size 150ms cubic-bezier(0.2, 0, 0, 1),
+          color 150ms ease,
+          background-color 150ms ease,
+          border-color 150ms ease,
+          opacity 150ms ease,
+          transform 150ms ease;
+      }
+      a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover {
+        background-size: 100% 1px;
+      }
+
+      button:not(.pwd-toggle):active,
+      .btn:active,
+      [role="button"]:active {
+        transform: scale(0.98);
+      }
+
+      @keyframes micro-rise {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      [role="dialog"] > *,
+      .drawer-inner > *,
+      .drawer-panel > * {
+        animation: micro-rise 260ms cubic-bezier(0.2, 0, 0, 1) both;
+      }
+      [role="dialog"] > * + *,
+      .drawer-inner > * + *,
+      .drawer-panel > * + * {
+        animation-delay: 50ms;
+      }
+
+      img[loading="lazy"] {
+        opacity: 0.8;
+        transition: opacity 260ms ease;
+      }
+      img[loading="lazy"].micro-loaded { opacity: 1; }
+
+      #scroll-progress {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%;
+        height: 2px;
+        transform: scaleX(var(--micro-prog, 0));
+        transform-origin: left center;
+        background: var(--accent, #635bff);
+        z-index: 1000;
+        pointer-events: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        a { background-image: none; }
+        a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover { background-size: 0 1px; }
+        button:not(.pwd-toggle):active,
+        .btn:active,
+        [role="button"]:active { transform: none; }
+        [role="dialog"] > *,
+        .drawer-inner > *,
+        .drawer-panel > * { animation: none; }
+        img[loading="lazy"] { opacity: 1; transition: none; }
+        #scroll-progress { transform: none; }
+      }
+    </style>
+    <!-- /OD MICRO-INTERACTIONS -->
+
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a class="brand" href="index.html" aria-label="AuctionHub trang chủ">
+          AuctionHub<span class="brand-dot">.</span>
+        </a>
+
+        <nav class="nav" aria-label="Điều hướng chính">
+          <a class="nav-link" href="index.html">Trang chủ</a>
+          <a class="nav-link" href="index.html#phien-dang-dien-ra">Phiên đang diễn ra</a>
+          <a class="nav-link" href="index.html#how-it-works">Cách hoạt động</a>
+        </nav>
+
+        <a class="btn btn-ghost" href="login.html">Đăng nhập</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <div class="container">
+        <nav class="crumbs" aria-label="Chuỗi điều hướng">
+          <a href="index.html">Trang chủ</a>
+          <span class="sep" aria-hidden="true">/</span>
+          <span>Người bán</span>
+          <span class="sep" aria-hidden="true">/</span>
+          <span>TechStore VN</span>
+        </nav>
+
+        <!-- ═══ PROFILE HEADER ═══ -->
+        <section class="profile-section" aria-label="Hồ sơ người bán TechStore VN">
+          <div class="profile-head">
+            <span class="avatar-profile" aria-hidden="true">TS</span>
+
+            <div class="profile-id">
+              <div class="profile-name">
+                <h1>TechStore VN</h1>
+                <span class="verified-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                  Verified
+                </span>
+              </div>
+              <a class="rating-link" href="#" id="rating-link" aria-label="Xem đánh giá của TechStore VN">
+                <span aria-hidden="true">4.8</span>
+                <span class="tnum" aria-hidden="true">★</span>
+                <span>(1.240 đánh giá)</span>
+              </a>
+              <ul class="profile-facts">
+                <li>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                  Quận 1, TP.HCM
+                </li>
+                <li>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 2" />
+                  </svg>
+                  Thành viên từ Tháng 3, 2022
+                </li>
+                <li>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5.6a8.5 8.5 0 1 1 16.1-3.9Z" />
+                  </svg>
+                  Phản hồi trong 15 phút
+                </li>
+              </ul>
+            </div>
+
+            <div class="profile-actions">
+              <a class="btn btn-ghost" href="#" id="btn-message" aria-label="Nhắn tin cho TechStore VN">Nhắn tin</a>
+              <button class="btn btn-primary" type="button" id="btn-follow" aria-pressed="false">
+                Theo dõi<span class="follow-count" id="follow-count">2.341</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ═══ TABS ═══ -->
+        <div class="tabs" role="tablist" aria-label="Nội dung hồ sơ người bán">
+          <button type="button" role="tab" id="tab-ongiong" aria-selected="true" aria-controls="panel-ongiong" data-panel="ongiong">Đang bán<span class="tcount">12</span></button>
+          <button type="button" role="tab" id="tab-daban" aria-selected="false" aria-controls="panel-daban" data-panel="daban">Đã bán<span class="tcount">318</span></button>
+          <button type="button" role="tab" id="tab-danhgia" aria-selected="false" aria-controls="panel-danhgia" data-panel="danhgia">Đánh giá<span class="tcount">1.240</span></button>
+          <button type="button" role="tab" id="tab-gioithieu" aria-selected="false" aria-controls="panel-gioithieu" data-panel="gioithieu">Giới thiệu</button>
+        </div>
+
+        <!-- ═══ PANEL: ĐANG BÁN ═══ -->
+        <section class="tab-panel" id="panel-ongiong" role="tabpanel" aria-labelledby="tab-ongiong">
+          <p class="tab-note" id="note-ongiong">Hiển thị 12 phiên đang nhận giá trên 3.417 lượt xem.</p>
+          <div class="sale-grid">
+            <article class="sale-card">
+              <a class="media" href="auction-detail.html">
+                <img src="images/laptop.jpg" alt="MacBook Pro 14 inch M3 2023" width="800" height="800" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">MacBook Pro 14 M3 2023</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">38.500.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="price-label">Kết thúc sau</span>
+                    <span class="countdown-time" data-sec="48200">13:23:20</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="MacBook Pro 14 M3 2023">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card">
+              <a class="media" href="auction-detail.html">
+                <img src="images/phone.jpg" alt="iPhone 15 Pro Max 256GB màu tự nhiên" width="600" height="400" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">iPhone 15 Pro Max 256GB</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">27.900.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="price-label">Kết thúc sau</span>
+                    <span class="countdown-time" data-sec="130500">36:15:00</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="iPhone 15 Pro Max 256GB">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card">
+              <a class="media" href="auction-detail.html">
+                <img src="images/tablet.jpg" alt="iPad Pro 11 inch M2" width="600" height="427" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">iPad Pro 11 M2 128GB</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">19.800.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="price-label">Kết thúc sau</span>
+                    <span class="countdown-time" data-sec="70200">19:30:00</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="iPad Pro 11 M2 128GB">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card">
+              <a class="media" href="auction-detail.html">
+                <img src="images/mbp-front.jpg" alt="MacBook Pro 16 inch M3 Max" width="1600" height="1067" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">MacBook Pro 16 M3 Max</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">59.900.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="price-label">Kết thúc sau</span>
+                    <span class="countdown-time" data-sec="9600">02:40:00</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="MacBook Pro 16 M3 Max">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card">
+              <a class="media" href="auction-detail.html">
+                <img src="images/mbp-side.jpg" alt="MacBook Pro 14 inch M1 Pro nhìn nghiêng" width="904" height="840" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">MacBook Pro 14 M1 Pro 2021</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">26.400.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="price-label">Kết thúc sau</span>
+                    <span class="countdown-time" data-sec="210000">58:20:00</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="MacBook Pro 14 M1 Pro 2021">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card">
+              <a class="media" href="auction-detail.html">
+                <img src="images/headphones.jpg" alt="AirPods Max màu xám" width="600" height="400" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">AirPods Max</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">11.500.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="price-label">Kết thúc sau</span>
+                    <span class="countdown-time" data-sec="35600">09:53:20</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="AirPods Max">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card">
+              <a class="media" href="auction-detail.html">
+                <img src="images/mbp-angle.jpg" alt="MacBook Air 13 inch M2 một góc 3/4" width="1600" height="1280" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">MacBook Air 13 M2 2022</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">23.900.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="price-label">Kết thúc sau</span>
+                    <span class="countdown-time" data-sec="173000">48:03:20</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="MacBook Air 13 M2 2022">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card">
+              <a class="media" href="auction-detail.html">
+                <img src="images/phone.jpg" alt="iPhone 15 Pro 128GB màu titan" width="600" height="400" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">iPhone 15 Pro 128GB</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">22.400.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="price-label">Kết thúc sau</span>
+                    <span class="countdown-time" data-sec="1200">00:20:00</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="iPhone 15 Pro 128GB">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card">
+              <a class="media" href="auction-detail.html">
+                <img src="images/tablet.jpg" alt="iPad Air 5 màu xanh dương" width="600" height="427" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">iPad Air 5 64GB</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">13.200.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="price-label">Kết thúc sau</span>
+                    <span class="countdown-time" data-sec="92000">25:33:20</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="iPad Air 5 64GB">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card">
+              <a class="media" href="auction-detail.html">
+                <img src="images/laptop.jpg" alt="MacBook Pro 14 inch M3 Space Black" width="800" height="800" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">MacBook Pro 14 M3 Space Black</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">36.200.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="price-label">Kết thúc sau</span>
+                    <span class="countdown-time" data-sec="61500">17:05:00</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="MacBook Pro 14 M3 Space Black">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card">
+              <a class="media" href="auction-detail.html">
+                <img src="images/headphones.jpg" alt="AirPods Pro 2 USB-C" width="600" height="400" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">AirPods Pro 2 USB-C</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">5.900.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="price-label">Kết thúc sau</span>
+                    <span class="countdown-time" data-sec="240000">66:40:00</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="AirPods Pro 2 USB-C">Đặt giá</button>
+              </div>
+            </article>
+
+            <article class="sale-card">
+              <a class="media" href="auction-detail.html">
+                <img src="images/mbp-front.jpg" alt="MacBook Air 15 inch M2" width="1600" height="1067" loading="lazy" />
+              </a>
+              <div class="sale-body">
+                <h3 class="card-title"><a href="auction-detail.html">MacBook Air 15 M2 2023</a></h3>
+                <div class="sale-price-row">
+                  <span class="price-grid">
+                    <span class="price-label">Giá hiện tại</span>
+                    <span class="sale-price tnum">26.800.000đ</span>
+                  </span>
+                  <span class="countdown-wrap">
+                    <span class="price-label">Kết thúc sau</span>
+                    <span class="countdown-time" data-sec="118000">32:46:40</span>
+                  </span>
+                </div>
+                <button class="btn btn-primary" type="button" data-open="MacBook Air 15 M2 2023">Đặt giá</button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <!-- ═══ PANEL: ĐÃ BÁN ═══ -->
+        <section class="tab-panel" id="panel-daban" role="tabpanel" aria-labelledby="tab-daban" hidden>
+          <p class="tab-note">318 phiên đã kết thúc có người thắng. Dưới đây là 10 phiên gần nhất.</p>
+          <ol class="sold-list">
+            <li class="sold-row">
+              <img class="sold-thumb" src="images/laptop.jpg" alt="MacBook Pro 14 M3 2023" width="56" height="42" loading="lazy" />
+              <span class="sold-info">
+                <span class="sold-title">MacBook Pro 14 M3 2023</span>
+                <span class="sold-meta">Bán 19/09</span>
+              </span>
+              <span class="sold-winner">Người thắng: Nguyễn V.***</span>
+              <span class="sold-price tnum">37.500.000đ</span>
+            </li>
+            <li class="sold-row">
+              <img class="sold-thumb" src="images/phone.jpg" alt="iPhone 15 Pro Max" width="56" height="42" loading="lazy" />
+              <span class="sold-info">
+                <span class="sold-title">iPhone 15 Pro Max</span>
+                <span class="sold-meta">Bán 18/09</span>
+              </span>
+              <span class="sold-winner">Người thắng: Trần V.***</span>
+              <span class="sold-price tnum">24.200.000đ</span>
+            </li>
+            <li class="sold-row">
+              <img class="sold-thumb" src="images/tablet.jpg" alt="iPad Pro 11 M2" width="56" height="42" loading="lazy" />
+              <span class="sold-info">
+                <span class="sold-title">iPad Pro 11 M2</span>
+                <span class="sold-meta">Bán 16/09</span>
+              </span>
+              <span class="sold-winner">Người thắng: Lê T.***</span>
+              <span class="sold-price tnum">18.900.000đ</span>
+            </li>
+            <li class="sold-row">
+              <img class="sold-thumb" src="images/headphones.jpg" alt="AirPods Max" width="56" height="42" loading="lazy" />
+              <span class="sold-info">
+                <span class="sold-title">AirPods Max</span>
+                <span class="sold-meta">Bán 14/09</span>
+              </span>
+              <span class="sold-winner">Người thắng: Phạm H.***</span>
+              <span class="sold-price tnum">10.900.000đ</span>
+            </li>
+            <li class="sold-row">
+              <img class="sold-thumb" src="images/mbp-front.jpg" alt="MacBook Pro 16 M3 Max" width="56" height="42" loading="lazy" />
+              <span class="sold-info">
+                <span class="sold-title">MacBook Pro 16 M3 Max</span>
+                <span class="sold-meta">Bán 12/09</span>
+              </span>
+              <span class="sold-winner">Người thắng: Hoàng V.***</span>
+              <span class="sold-price tnum">58.000.000đ</span>
+            </li>
+            <li class="sold-row">
+              <img class="sold-thumb" src="images/mbp-side.jpg" alt="MacBook Pro 14 M1 Pro 2021" width="56" height="42" loading="lazy" />
+              <span class="sold-info">
+                <span class="sold-title">MacBook Pro 14 M1 Pro 2021</span>
+                <span class="sold-meta">Bán 10/09</span>
+              </span>
+              <span class="sold-winner">Người thắng: Đào M.***</span>
+              <span class="sold-price tnum">25.600.000đ</span>
+            </li>
+            <li class="sold-row">
+              <img class="sold-thumb" src="images/phone.jpg" alt="iPhone 15 Pro 128GB" width="56" height="42" loading="lazy" />
+              <span class="sold-info">
+                <span class="sold-title">iPhone 15 Pro 128GB</span>
+                <span class="sold-meta">Bán 08/09</span>
+              </span>
+              <span class="sold-winner">Người thắng: Vũ N.***</span>
+              <span class="sold-price tnum">21.800.000đ</span>
+            </li>
+            <li class="sold-row">
+              <img class="sold-thumb" src="images/mbp-angle.jpg" alt="MacBook Air 13 M2 2022" width="56" height="42" loading="lazy" />
+              <span class="sold-info">
+                <span class="sold-title">MacBook Air 13 M2 2022</span>
+                <span class="sold-meta">Bán 06/09</span>
+              </span>
+              <span class="sold-winner">Người thắng: Đỗ K.***</span>
+              <span class="sold-price tnum">23.100.000đ</span>
+            </li>
+            <li class="sold-row">
+              <img class="sold-thumb" src="images/tablet.jpg" alt="iPad Air 5 64GB" width="56" height="42" loading="lazy" />
+              <span class="sold-info">
+                <span class="sold-title">iPad Air 5 64GB</span>
+                <span class="sold-meta">Bán 04/09</span>
+              </span>
+              <span class="sold-winner">Người thắng: Nguyễn T.***</span>
+              <span class="sold-price tnum">12.700.000đ</span>
+            </li>
+            <li class="sold-row">
+              <img class="sold-thumb" src="images/headphones.jpg" alt="AirPods Pro 2 USB-C" width="56" height="42" loading="lazy" />
+              <span class="sold-info">
+                <span class="sold-title">AirPods Pro 2 USB-C</span>
+                <span class="sold-meta">Bán 02/09</span>
+              </span>
+              <span class="sold-winner">Người thắng: Ngô P.***</span>
+              <span class="sold-price tnum">5.600.000đ</span>
+            </li>
+          </ol>
+        </section>
+
+        <!-- ═══ PANEL: ĐÁNH GIÁ ═══ -->
+        <section class="tab-panel" id="panel-danhgia" role="tabpanel" aria-labelledby="tab-danhgia" hidden>
+          <div class="chips" role="group" aria-label="Lọc đánh giá theo số sao">
+            <button type="button" data-filter="all" aria-pressed="true">Tất cả</button>
+            <button type="button" data-filter="5" aria-pressed="false">5★</button>
+            <button type="button" data-filter="4" aria-pressed="false">4★</button>
+            <button type="button" data-filter="3" aria-pressed="false">3★</button>
+            <button type="button" data-filter="low" aria-pressed="false">Thấp hơn</button>
+          </div>
+
+          <div class="review-list" id="review-list">
+            <article class="review-card" data-rating="5">
+              <div class="review-head">
+                <span class="review-avatar" aria-hidden="true">NA</span>
+                <span class="review-by">
+                  <span class="review-name">Nguyễn Văn A</span>
+                  <span class="review-meta">19/09/2026 · Phiên “MacBook Pro 14 M3”</span>
+                </span>
+                <span class="review-stars" aria-label="5 trên 5 sao">★★★★★</span>
+              </div>
+              <p class="review-text">“Máy đúng mô tả, giao nhanh. Đóng gói cẩn thận.”</p>
+            </article>
+
+            <article class="review-card" data-rating="4">
+              <div class="review-head">
+                <span class="review-avatar" aria-hidden="true">TB</span>
+                <span class="review-by">
+                  <span class="review-name">Trần Thị B</span>
+                  <span class="review-meta">15/09/2026 · Phiên “iPhone 15 Pro Max”</span>
+                </span>
+                <span class="review-stars" aria-label="4 trên 5 sao">★★★★☆</span>
+              </div>
+              <p class="review-text">“Máy ổn, pin 96% không phải 98% như mô tả. Vẫn chấp nhận được.”</p>
+            </article>
+
+            <article class="review-card" data-rating="5">
+              <div class="review-head">
+                <span class="review-avatar" aria-hidden="true">LC</span>
+                <span class="review-by">
+                  <span class="review-name">Lê Văn C</span>
+                  <span class="review-meta">12/09/2026 · Phiên “iPad Pro 11 M2”</span>
+                </span>
+                <span class="review-stars" aria-label="5 trên 5 sao">★★★★★</span>
+              </div>
+              <p class="review-text">“Hàng đặt sáng nay trưa đã có, kiểm tra máy kỹ tại chỗ trước khi giao. 5 sao.”</p>
+            </article>
+
+            <article class="review-card" data-rating="3">
+              <div class="review-head">
+                <span class="review-avatar" aria-hidden="true">PM</span>
+                <span class="review-by">
+                  <span class="review-name">Phạm Minh D</span>
+                  <span class="review-meta">08/09/2026 · Phiên “MacBook Pro 16 M3 Max”</span>
+                </span>
+                <span class="review-stars" aria-label="3 trên 5 sao">★★★☆☆</span>
+              </div>
+              <p class="review-text">“Máy chất lượng nhưng ship lâu hơn hẹn 2 ngày. Nhắn tin shop trả lời hơi muộn.”</p>
+            </article>
+
+            <article class="review-card" data-rating="2">
+              <div class="review-head">
+                <span class="review-avatar" aria-hidden="true">HT</span>
+                <span class="review-by">
+                  <span class="review-name">Hoàng Thu E</span>
+                  <span class="review-meta">05/09/2026 · Phiên “AirPods Max”</span>
+                </span>
+                <span class="review-stars" aria-label="2 trên 5 sao">★★☆☆☆</span>
+              </div>
+              <p class="review-text">“Được giao đúng hàng nhưng tem bảo hành không ghi ngày, chỉ tự dán. Chưa hài lòng lắm.”</p>
+            </article>
+          </div>
+        </section>
+
+        <!-- ═══ PANEL: GIỚI THIỆU ═══ -->
+        <section class="tab-panel" id="panel-gioithieu" role="tabpanel" aria-labelledby="tab-gioithieu" hidden>
+          <div class="about">
+            <p class="about-desc">
+              Chuyên cung cấp thiết bị Apple cũ Like New tại TP.HCM từ 2022. 300+ đơn thành công, 0 tranh chấp chưa xử lý. Kiểm tra máy trực tiếp tại Quận 1 hoặc ship COD toàn quốc.
+            </p>
+
+            <div>
+              <h2 class="about-label">Danh mục</h2>
+              <div class="about-pills">
+                <span>Laptop</span>
+                <span>Điện thoại</span>
+                <span>Tablet</span>
+              </div>
+            </div>
+
+            <div class="policy-card">
+              <span class="about-label">Chính sách đổi trả</span>
+              <span class="policy-value">7 ngày nếu không đúng mô tả</span>
+              <span class="policy-note">Đổi trả trong 7 ngày khi sản phẩm khác với mô tả trong phiên đấu giá.</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <span>© 2026 AuctionHub JSC. Phiên đấu giá minh họa cho bản prototype.</span>
+        <a href="index.html">Quay về trang chủ</a>
+      </div>
+    </footer>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      function $(id) { return document.getElementById(id); }
+      var toastEl = $("toast");
+      var toastTimer = null;
+      function showToast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () {
+          toastEl.classList.remove("show");
+        }, 2600);
+      }
+
+      /* ── Tabs ── */
+      var tabs = Array.prototype.slice.call(document.querySelectorAll(".tabs [role='tab']"));
+      var panels = Array.prototype.slice.call(document.querySelectorAll("[role='tabpanel']"));
+      function activateTab(name) {
+        tabs.forEach(function (t) {
+          var on = t.getAttribute("data-panel") === name;
+          t.setAttribute("aria-selected", String(on));
+          if (on) { t.setAttribute("tabindex", "0"); } else { t.setAttribute("tabindex", "-1"); }
+        });
+        panels.forEach(function (p) {
+          p.hidden = p.id !== "panel-" + name;
+        });
+      }
+      tabs.forEach(function (t) {
+        t.addEventListener("click", function () {
+          activateTab(t.getAttribute("data-panel"));
+        });
+      });
+
+      /* Rating link mở tab Đánh giá */
+      $("rating-link").addEventListener("click", function (e) {
+        activateTab("danhgia");
+      });
+
+      /* ── Follow ── */
+      var followBtn = $("btn-follow");
+      var followCount = 2341;
+      var isFollowing = false;
+      function fmtCount(n) {
+        var digits = String(n);
+        var parts = [];
+        while (digits.length > 3) {
+          parts.unshift(digits.substr(-3));
+          digits = digits.substr(0, digits.length - 3);
+        }
+        parts.unshift(digits);
+        return parts.join(".");
+      }
+      function renderFollow() {
+        followBtn.textContent = isFollowing ? "Đang theo dõi " : "Theo dõi ";
+        var span = document.createElement("span");
+        span.className = "follow-count";
+        span.textContent = fmtCount(followCount);
+        followBtn.appendChild(span);
+      }
+      followBtn.addEventListener("click", function () {
+        isFollowing = !isFollowing;
+        followCount = isFollowing ? followCount + 1 : followCount - 1;
+        followBtn.setAttribute("aria-pressed", String(isFollowing));
+        renderFollow();
+        showToast(isFollowing ? "Bạn đang theo dõi TechStore VN." : "Đã bỏ theo dõi TechStore VN.");
+      });
+
+      /* ── Message ── */
+      $("btn-message").addEventListener("click", function (e) {
+        e.preventDefault();
+        showToast("Đang mở khung nhắn tin với TechStore VN.");
+      });
+
+      /* ── Reviews filter chips ── */
+      var chips = Array.prototype.slice.call(document.querySelectorAll(".chips [data-filter]"));
+      var reviewCards = Array.prototype.slice.call(document.querySelectorAll("#review-list .review-card"));
+      chips.forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          chips.forEach(function (c) { c.setAttribute("aria-pressed", String(c === chip)); });
+          var filter = chip.getAttribute("data-filter");
+          reviewCards.forEach(function (card) {
+            var rating = parseInt(card.getAttribute("data-rating"), 10);
+            var visible =
+              filter === "all" ||
+              (filter === "low" && rating < 3) ||
+              (filter !== "low" && rating === parseInt(filter, 10));
+            card.hidden = !visible;
+          });
+        });
+      });
+
+      /* ── Đặt giá ── */
+      document.querySelectorAll("[data-open]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          showToast("Đang mở phiên đấu giá “" + btn.getAttribute("data-open") + "”.");
+        });
+      });
+
+      /* ── Countdown cho lưới Đang bán ── */
+      function pad(n) { return n < 10 ? "0" + n : String(n); }
+      function fmt(sec) {
+        var h = Math.floor(sec / 3600);
+        var m = Math.floor((sec % 3600) / 60);
+        var s = sec % 60;
+        return pad(h) + ":" + pad(m) + ":" + pad(s);
+      }
+      var timers = Array.prototype.slice.call(document.querySelectorAll(".countdown-time"));
+      var ends = timers.map(function (el) {
+        return Date.now() + parseInt(el.getAttribute("data-sec"), 10) * 1000;
+      });
+      function tick() {
+        var now = Date.now();
+        timers.forEach(function (el, i) {
+          var left = Math.max(0, Math.round((ends[i] - now) / 1000));
+          el.textContent = left > 0 ? fmt(left) : "Đã kết thúc";
+        });
+      }
+      tick();
+      setInterval(tick, 1000);
+    </script>
+  
+
+    <script data-micro-interactions="js">
+      (function () {
+        var lazy = document.querySelectorAll('img[loading="lazy"]');
+        for (var i = 0; i < lazy.length; i++) {
+          (function (img) {
+            if (img.complete) { img.classList.add("micro-loaded"); return; }
+            img.addEventListener("load", function () {
+              img.classList.add("micro-loaded");
+            });
+          })(lazy[i]);
+        }
+
+        var bar = document.getElementById("scroll-progress");
+        if (!bar) return;
+        function paint() {
+          var doc = document.documentElement;
+          var max = doc.scrollHeight - window.innerHeight;
+          var p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+          bar.style.setProperty("--micro-prog", p.toFixed(4));
+        }
+        window.addEventListener("scroll", paint, { passive: true });
+        window.addEventListener("resize", paint);
+        paint();
+      })();
+    </script>
+
+  </body>
+</html>

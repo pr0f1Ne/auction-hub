@@ -1,0 +1,1850 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AuctionHub | MacBook Pro 14 M3 2023 | Phiên đã kết thúc</title>
+    <meta
+      name="description"
+      content="Phiên đấu giá MacBook Pro 14 M3 2023 trên AuctionHub đã kết thúc. Người thắng: Nguyễn V.*** với giá trúng đấu giá 37.500.000đ."
+    />
+
+    <style>
+      /* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio.
+         Put this @layer first; product CSS outside the layer always wins. */
+      @layer od-layout {
+        :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+
+        /* containers */
+        .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+        .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+        .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+        .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+        .od-fill    { flex: 1 1 0; min-width: 0; }
+        .od-fixed   { flex: none; }
+        .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+
+        /* stacked information: each piece is its own line — never sibling inline spans */
+        .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+        :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+        .od-tile { display: grid; grid-template-rows: auto 1fr; }
+        :where(.od-tile) > :where(*) { display: block; }
+
+        /* media keeps its intrinsic ratio by default; never a distorted or cropped
+           cover by accident. height:auto lets the ratio win over an <img height="…">
+           attribute. Cropping to a uniform box is an explicit opt-in: set --od-ratio
+           AND add .od-media-cover together (per the core rule, only where a crop is
+           deliberate — tile thumbs, decorative fills — never on full-frame content). */
+        .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+        .od-media-cover { object-fit: cover; }
+
+        /* data text only — authored copy is rewritten to its budget instead */
+        .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+        .od-clamp-2 { -webkit-line-clamp: 2; }
+        .od-clamp-3 { -webkit-line-clamp: 3; }
+        .od-lines-2 { min-height: calc(2 * 1.4em); }   /* block-level reservation for a shared baseline */
+        .od-nowrap  { white-space: nowrap; }           /* 数字+单位 · 价格+起 · 日期+星期 */
+        .od-keep    { word-break: keep-all; overflow-wrap: anywhere; } /* CJK labels break at spaces / <wbr> first */
+
+        /* screen skeleton (optional): bars take their own space, the middle scrolls — no padding guessed for chrome */
+        .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+        .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+
+        /* horizontal rail: the next item peeks at the edge; trailing room survives overflow */
+        .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+                   padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+        .od-rail::-webkit-scrollbar { display: none; }
+        :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+        :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+
+        .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+        .od-touch  { min-width: 44px; min-height: 44px; }
+      }
+      /* /OD-LAYOUT-PRIMITIVES v1 */
+
+      /* ─── Design tokens ───────────────────────────────────────────── */
+      :root {
+        --bg:           #ffffff;
+        --surface:      #ffffff;
+        --surface-warm: #fafafa;
+
+        --fg:    #1a1a1a;
+        --fg-2:  #374151;
+        --muted: #6b7280;
+        --meta:  var(--muted);
+
+        --border:      #e5e7eb;
+        --border-soft: var(--border);
+
+        --accent:    #635bff;
+        --accent-on: #ffffff;
+
+        --accent-hover:  #5851df;
+        --accent-active: #4f46d6;
+
+        --success:      #15be53;
+        --success-text: #0b7a44;
+        --success-bg:   #eaf7f1;
+        --warn:         #9b6829;
+        --danger:       #ea2261;
+        --danger-text:  #b4233e;
+        --danger-bg:    #fbeeef;
+        --urgent:       #ef4444;
+
+        --on-dark:       #ffffff;
+        --on-dark-muted: rgba(255, 255, 255, 0.72);
+        --dark-bg:       #1a1a1a;
+        --dark-bg-2:     #111113;
+
+        --font-display:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-body:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-mono:
+          "SourceCodePro", "Source Code Pro",
+          ui-monospace, "SF Mono", "JetBrains Mono",
+          Menlo, Monaco, Consolas, monospace;
+
+        --text-xs:   12px;
+        --text-sm:   14px;
+        --text-base: 17px;
+        --text-lg:   19px;
+        --text-xl:   24px;
+        --text-2xl:  32px;
+        --text-3xl:  46px;
+
+        --leading-body:     1.55;
+        --leading-tight:    1.1;
+        --tracking-display: -0.02em;
+
+        --space-1:  4px;
+        --space-2:  8px;
+        --space-3:  12px;
+        --space-4:  16px;
+        --space-5:  20px;
+        --space-6:  24px;
+        --space-8:  32px;
+        --space-12: 48px;
+
+        --radius-sm: 4px;
+        --radius-md: 6px;
+        --radius-lg: 8px;
+
+        --elev-flat:   none;
+        --elev-ring:   0 0 0 1px var(--border);
+        --elev-soft:
+          rgba(50, 50, 93, 0.06) 0px 6px 18px -6px,
+          rgba(0,   0,  0, 0.06) 0px 3px 8px  -4px;
+        --elev-raised:
+          rgba(50, 50, 93, 0.16) 0px 24px 40px -28px,
+          rgba(0,   0,  0, 0.10) 0px 16px 32px -18px;
+
+        --motion-fast:   150ms;
+        --motion-base:   200ms;
+        --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+        --container-max:            1120px;
+        --container-gutter-desktop: 32px;
+        --container-gutter-tablet:  24px;
+        --container-gutter-phone:   20px;
+      }
+
+      /* ─── Base ─────────────────────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; }
+      html { scroll-behavior: smooth; scroll-padding-top: 92px; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--font-body);
+        font-size: var(--text-base);
+        line-height: var(--leading-body);
+        font-weight: 400;
+        font-feature-settings: "ss01";
+        -webkit-font-smoothing: antialiased;
+      }
+      strong { font-weight: 600; }
+      img { max-width: 100%; }
+
+      .tnum { font-feature-settings: "tnum", "ss01"; }
+
+      .container {
+        max-width: var(--container-max);
+        margin-inline: auto;
+        padding-inline: var(--container-gutter-desktop);
+      }
+
+      h1, h2, h3 {
+        font-family: var(--font-display);
+        font-weight: 300;
+        line-height: var(--leading-tight);
+        letter-spacing: var(--tracking-display);
+        color: var(--fg);
+        margin: 0;
+      }
+      p { margin: 0; }
+
+      .body-muted { color: var(--muted); }
+      .body-sm    { font-size: var(--text-sm); line-height: 1.6; }
+      .body-meta  { font-size: var(--text-sm); color: var(--meta); }
+
+      .icon { width: 18px; height: 18px; flex-shrink: 0; }
+      .icon-sm { width: 15px; height: 15px; flex-shrink: 0; }
+
+      /* ─── Header / nav ─────────────────────────────────────────── */
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: rgba(255, 255, 255, 0.92);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border);
+      }
+      .site-header .container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-4);
+        height: 72px;
+      }
+      .brand {
+        display: inline-flex;
+        align-items: baseline;
+        gap: 2px;
+        font-family: var(--font-display);
+        font-feature-settings: "ss01";
+        font-size: 19px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--fg);
+        text-decoration: none;
+      }
+      .brand:hover { color: var(--fg); }
+      .brand-dot { color: var(--accent); }
+
+      .nav { display: flex; align-items: center; gap: var(--space-3); }
+      .nav-link {
+        text-decoration: none;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--fg-2);
+        border-radius: var(--radius-sm);
+        display: inline-flex;
+        align-items: center;
+        min-height: 40px;
+      }
+      .nav-link:hover { color: var(--fg); }
+
+      /* ─── Links ────────────────────────────────────────────────── */
+      a {
+        color: var(--fg);
+        text-decoration: underline;
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+        font-feature-settings: "ss01";
+        transition: color var(--motion-fast) var(--ease-standard);
+      }
+      a:hover { color: var(--fg-2); }
+
+      /* ─── Buttons ──────────────────────────────────────────────── */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        padding: 10px 18px;
+        border-radius: var(--radius-sm);
+        font-family: var(--font-display);
+        font-feature-settings: "ss01";
+        font-weight: 500;
+        font-size: var(--text-base);
+        line-height: 1;
+        cursor: pointer;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--fg);
+        text-decoration: none;
+        min-height: 44px;
+        transition:
+          background-color var(--motion-fast) var(--ease-standard),
+          border-color var(--motion-fast) var(--ease-standard),
+          color var(--motion-fast) var(--ease-standard),
+          box-shadow var(--motion-fast) var(--ease-standard);
+      }
+      .btn:focus-visible,
+      .stepper-btn:focus-visible,
+      .gallery-thumb:focus-visible,
+      .switch:focus-visible,
+      .lightbox-close:focus-visible,
+      .history-toggle:focus-visible,
+      a:focus-visible,
+      input:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
+
+      .btn-primary {
+        background: var(--accent);
+        color: var(--accent-on);
+      }
+      .btn-primary:hover  { background: var(--accent-hover); color: var(--accent-on); }
+      .btn-primary:active { background: var(--accent-active); color: var(--accent-on); }
+
+      .btn-ghost {
+        background: transparent;
+        color: var(--fg);
+        border-color: var(--border);
+      }
+      .btn-ghost:hover {
+        background: var(--surface-warm);
+        color: var(--fg);
+        border-color: #d1d5db;
+      }
+
+      .btn[disabled] { opacity: 0.55; cursor: not-allowed; pointer-events: none; }
+
+      /* ─── Breadcrumb ───────────────────────────────────────────── */
+      .crumbs {
+        padding-block: var(--space-4) 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--space-2);
+        font-size: var(--text-sm);
+        color: var(--muted);
+      }
+      .crumbs a { color: var(--muted); text-decoration: none; }
+      .crumbs a:hover { color: var(--fg); }
+      .crumbs .sep { color: #d1d5db; }
+
+      /* ─── Page layout ──────────────────────────────────────────── */
+      .page { padding-block: var(--space-6) var(--space-12); }
+      .detail-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+        gap: clamp(28px, 4vw, 56px);
+        align-items: start;
+      }
+      .col-left {
+        display: grid;
+        gap: var(--space-8);
+        min-width: 0;
+      }
+      .col-right { min-width: 0; }
+      .bid-panel {
+        position: sticky;
+        top: 92px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--elev-soft);
+        padding: var(--space-6);
+        display: grid;
+        gap: var(--space-6);
+      }
+
+      /* ─── Gallery ──────────────────────────────────────────────── */
+      .gallery { display: grid; gap: var(--space-3); }
+      .gallery-main {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--surface);
+        overflow: hidden;
+      }
+      .gallery-main img { display: block; width: 100%; height: auto; }
+      .gallery-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-3);
+      }
+      .gallery-meta { font-size: var(--text-sm); color: var(--muted); }
+      .gallery-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--fg-2);
+        text-decoration: none;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: 8px 14px;
+        background: var(--surface);
+        min-height: 40px;
+      }
+      .gallery-link:hover { color: var(--fg); background: var(--surface-warm); }
+      .gallery-thumbs {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: var(--space-3);
+      }
+      .gallery-thumbs .thumb-wrap { min-width: 0; }
+      .gallery-thumb {
+        display: block;
+        width: 100%;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--surface);
+        cursor: pointer;
+        overflow: hidden;
+        transition: border-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
+      }
+      .gallery-thumb:hover { border-color: #d1d5db; }
+      .gallery-thumb.is-active {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 2px var(--accent);
+      }
+      .gallery-thumb img { display: block; width: 100%; height: auto; border-radius: 3px; }
+
+      /* ─── Item info ────────────────────────────────────────────── */
+      .item-info { display: grid; gap: var(--space-4); }
+      .item-title {
+        font-size: clamp(26px, 2.6vw, 34px);
+        line-height: 1.12;
+        letter-spacing: -0.02em;
+      }
+      .item-facts {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-3) var(--space-5);
+      }
+      .item-facts li {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: var(--text-sm);
+        color: var(--fg-2);
+      }
+      .item-facts svg { width: 16px; height: 16px; color: var(--muted); flex-shrink: 0; }
+      .cond-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: var(--text-xs);
+        font-weight: 500;
+        color: var(--success-text);
+        background: var(--success-bg);
+        border-radius: var(--radius-sm);
+        padding: 3px 8px;
+        line-height: 1.4;
+      }
+      .item-viewers { font-size: var(--text-sm); color: var(--muted); }
+
+      /* ─── Section blocks ───────────────────────────────────────── */
+      .block { display: grid; gap: var(--space-5); }
+      .block h2 {
+        font-size: var(--text-xl);
+        letter-spacing: -0.01em;
+      }
+      .block h3 {
+        font-size: 19px;
+        letter-spacing: -0.01em;
+      }
+      .desc-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: var(--space-3);
+      }
+      .desc-list li {
+        position: relative;
+        padding-inline-start: 22px;
+        font-size: var(--text-base);
+        color: var(--fg-2);
+      }
+      .desc-list li::before {
+        content: "";
+        position: absolute;
+        left: 2px;
+        top: 0.62em;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+
+      /* ─── Seller card ──────────────────────────────────────────── */
+      .seller-outer {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: var(--space-5);
+        display: grid;
+        gap: var(--space-4);
+      }
+      .seller-row {
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+      }
+      .avatar-lg {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #ffffff;
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: 19px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .seller-id { display: grid; gap: 2px; }
+      .seller-name {
+        display: flex;
+        align-items: center;
+        gap: var(--space-2);
+        font-weight: 500;
+        font-size: var(--text-base);
+        color: var(--fg);
+      }
+      .verified-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: var(--text-xs);
+        font-weight: 500;
+        color: var(--success-text);
+        background: var(--success-bg);
+        border-radius: var(--radius-sm);
+        padding: 2px 6px;
+        line-height: 1.4;
+      }
+      .verified-badge svg { width: 12px; height: 12px; }
+      .seller-meta { font-size: var(--text-sm); color: var(--muted); }
+      .seller-facts {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-2) var(--space-5);
+      }
+      .seller-facts li {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: var(--text-sm);
+        color: var(--fg-2);
+      }
+      .seller-facts svg { width: 15px; height: 15px; color: var(--muted); flex-shrink: 0; }
+
+      /* ─── Right column: status + price ─────────────────────────── */
+      .panel-status { display: grid; gap: 8px; }
+      .panel-status .label { font-size: var(--text-xs); color: var(--muted); }
+      .status-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 999px;
+        padding: 7px 14px;
+        background: var(--gray-bg);
+        color: var(--gray-text);
+        font-size: var(--text-base);
+        font-weight: 500;
+        line-height: 1.2;
+        width: fit-content;
+      }
+      .chip-dot { width: 8px; height: 8px; border-radius: 50%; background: #9ca3af; flex: none; }
+      .panel-meta { font-size: var(--text-sm); color: var(--muted); }
+
+      .ended-banner {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-3);
+        background: var(--surface-warm);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: var(--space-4);
+      }
+      .ended-banner svg { width: 20px; height: 20px; flex-shrink: 0; color: var(--muted); margin-block-start: 2px; }
+      .ended-banner-text { display: grid; gap: 6px; }
+      .ended-banner-text p {
+        font-size: var(--text-sm);
+        line-height: 1.6;
+        color: var(--fg-2);
+      }
+      .ended-banner-text a { font-size: var(--text-sm); font-weight: 500; color: var(--accent); }
+
+      .price-hero { display: grid; gap: 4px; padding-block: 2px; }
+      .price-hero .label { font-size: var(--text-xs); color: var(--muted); }
+      .price-big {
+        font-family: var(--font-display);
+        font-feature-settings: "tnum", "ss01";
+        font-weight: 300;
+        font-size: clamp(38px, 4.2vw, 48px);
+        line-height: 1.05;
+        letter-spacing: -0.02em;
+        color: var(--fg);
+        white-space: nowrap;
+      }
+      .price-start { font-size: var(--text-sm); color: var(--muted); }
+
+      .divider { height: 1px; background: var(--border); border: 0; margin: 0; }
+
+      /* ─── Bid form (decoupled, disabled state) ─────────────────── */
+      .bid-form { display: grid; gap: var(--space-4); }
+      .field-label {
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--fg-2);
+      }
+      .stepper {
+        display: grid;
+        grid-template-columns: 48px minmax(0, 1fr) 48px;
+        gap: var(--space-2);
+        align-items: stretch;
+      }
+      .stepper-btn {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface);
+        color: var(--fg-2);
+        font-size: 20px;
+        line-height: 1;
+        cursor: not-allowed;
+        min-height: 52px;
+      }
+      .stepper-btn:disabled { color: #d1d5db; background: var(--surface-warm); }
+      .bid-input {
+        min-width: 0;
+        width: 100%;
+        text-align: center;
+        padding: 10px 12px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        background: var(--surface-warm);
+        color: var(--fg-2);
+        font-family: var(--font-display);
+        font-feature-settings: "tnum", "ss01";
+        font-weight: 500;
+        font-size: 20px;
+        line-height: 1.2;
+      }
+      .bid-input:disabled { cursor: not-allowed; }
+      .bid-hint { font-size: var(--text-xs); color: var(--muted); line-height: 1.5; }
+
+      /* auto-bid */
+      .auto-field { display: grid; gap: var(--space-3); }
+      .switch-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-3);
+      }
+      .switch-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--muted);
+      }
+      .switch-label svg { width: 16px; height: 16px; color: #d1d5db; }
+      .switch {
+        position: relative;
+        width: 44px;
+        height: 24px;
+        flex-shrink: 0;
+        border-radius: 999px;
+        border: none;
+        background: #e5e7eb;
+        cursor: not-allowed;
+        padding: 0;
+      }
+      .switch:disabled { opacity: 1; }
+      .switch .knob {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #ffffff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      }
+
+      /* ─── Bid history ──────────────────────────────────────────── */
+      .history { display: grid; gap: var(--space-3); }
+      .history-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-3);
+      }
+      .history-head .label { font-size: var(--text-xs); color: var(--muted); }
+      .history-toggle {
+        font-size: var(--text-xs);
+        font-weight: 500;
+        color: var(--accent);
+        text-decoration: none;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px 0;
+        min-height: 20px;
+        font-family: inherit;
+      }
+      .history-toggle:hover { color: var(--accent-hover); text-decoration: underline; }
+      .history-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+      }
+      .history-list li {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: baseline;
+        column-gap: var(--space-3);
+        row-gap: 2px;
+        padding: 8px var(--space-4);
+        background: var(--surface);
+        font-size: var(--text-sm);
+      }
+      .history-list li + li { border-top: 1px solid var(--border); }
+      .history-list li:nth-child(even) { background: var(--surface-warm); }
+      .history-list li.is-highest { background: var(--success-bg); }
+      .bidder-name {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--fg-2);
+        font-weight: 500;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .bidder-price { font-feature-settings: "tnum", "ss01"; color: var(--fg); white-space: nowrap; }
+      .bidder-time {
+        grid-column: 1 / -1;
+        font-family: var(--font-mono);
+        font-feature-settings: "tnum";
+        font-size: var(--text-xs);
+        color: var(--muted);
+      }
+      .lead-flag {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--success-text);
+        white-space: nowrap;
+      }
+      .history-list li.is-collapsed { display: none; }
+      .history-list li.is-cancelled { background: var(--surface); }
+      .history-list li.is-cancelled .bidder-name { color: var(--muted); }
+      .history-list li.is-cancelled .bidder-price { color: var(--muted); }
+      .history-list li.is-cancelled .cancelled-note { color: var(--muted); white-space: nowrap; }
+      .auto-flag {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--accent);
+        white-space: nowrap;
+      }
+
+      /* ─── Trust badges ─────────────────────────────────────────── */
+      .trust-badges {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: var(--space-3);
+      }
+      .trust-badges li {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        background: var(--surface-warm);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        padding: var(--space-3) var(--space-4);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--fg-2);
+      }
+      .trust-badges svg { width: 18px; height: 18px; color: var(--accent); flex-shrink: 0; }
+
+      /* ─── Similar auctions ─────────────────────────────────────── */
+      .similar { display: grid; gap: var(--space-5); }
+      .similar .block-head { display: grid; gap: var(--space-2); }
+      .similar .block-head h2 { font-size: var(--text-xl); }
+      .similar-rail {
+        display: flex;
+        gap: var(--space-4);
+        overflow-x: auto;
+        scroll-snap-type: x proximity;
+        scrollbar-width: none;
+        padding-block-end: var(--space-2);
+      }
+      .similar-rail::-webkit-scrollbar { display: none; }
+      .similar-card {
+        flex: 0 0 232px;
+        scroll-snap-align: start;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: box-shadow var(--motion-base) var(--ease-standard), border-color var(--motion-base) var(--ease-standard);
+      }
+      .similar-card:hover { box-shadow: var(--elev-soft); border-color: #d7dae0; }
+      .similar-card .media { padding: var(--space-3) var(--space-3) 0; }
+      .similar-card .media img {
+        display: block;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 4 / 3;
+        object-fit: cover;
+        border-radius: var(--radius-md);
+        background: var(--surface-warm);
+      }
+      .similar-body {
+        padding: var(--space-3) var(--space-4) var(--space-4);
+        display: grid;
+        gap: var(--space-3);
+        flex: 1;
+      }
+      .similar-card .card-title {
+        font-family: var(--font-display);
+        font-size: 17px;
+        font-weight: 500;
+        line-height: 1.3;
+        letter-spacing: -0.01em;
+        color: var(--fg);
+      }
+      .similar-price-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: var(--space-3);
+      }
+      .similar-price {
+        font-family: var(--font-display);
+        font-feature-settings: "tnum", "ss01";
+        font-weight: 500;
+        font-size: 18px;
+        color: var(--fg);
+        white-space: nowrap;
+      }
+      .similar-timer {
+        font-family: var(--font-mono);
+        font-feature-settings: "tnum";
+        font-size: var(--text-xs);
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .similar-card .btn { width: 100%; min-height: 44px; }
+
+      /* ─── Lightbox ─────────────────────────────────────────────── */
+      .lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: var(--space-4);
+        background: rgba(17, 17, 19, 0.9);
+      }
+      .lightbox.open { display: flex; }
+      .lightbox-inner {
+        display: grid;
+        gap: var(--space-4);
+        width: min(860px, 100%);
+      }
+      .lightbox-main {
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        background: var(--dark-bg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .lightbox-main img { display: block; max-width: 100%; max-height: 74vh; height: auto; }
+      .lightbox-thumbs {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: var(--space-3);
+      }
+      .lightbox-thumbs .gallery-thumb { border-color: rgba(255, 255, 255, 0.3); }
+      .lightbox-thumbs .gallery-thumb:hover { border-color: #ffffff; }
+      .lightbox-thumbs .gallery-thumb.is-active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+      .lightbox-close {
+        position: absolute;
+        top: var(--space-4);
+        right: var(--space-4);
+        width: 44px;
+        height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: #ffffff;
+        cursor: pointer;
+      }
+      .lightbox-close:hover { background: rgba(255, 255, 255, 0.12); }
+
+      /* ─── Footer ───────────────────────────────────────────────── */
+      .site-footer {
+        border-top: 1px solid var(--border);
+        background: var(--surface-warm);
+        padding-block: var(--space-6);
+      }
+      .site-footer .container {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-3);
+        font-size: var(--text-sm);
+        color: var(--muted);
+      }
+      .site-footer a { color: var(--fg-2); text-decoration: none; font-weight: 500; }
+      .site-footer a:hover { color: var(--fg); }
+
+      /* ─── Skip link ────────────────────────────────────────────── */
+      .skip-link {
+        position: absolute;
+        left: 8px;
+        top: -60px;
+        z-index: 200;
+        background: var(--fg);
+        color: #ffffff;
+        padding: 10px 16px;
+        border-radius: var(--radius-sm);
+        font-size: var(--text-sm);
+        text-decoration: none;
+      }
+      .skip-link:focus { top: 8px; color: #ffffff; }
+
+      /* ─── Responsive ───────────────────────────────────────────── */
+      @media (max-width: 1023px) {
+        .detail-grid { grid-template-columns: 1fr; }
+        .bid-panel { position: static; top: auto; }
+      }
+      @media (max-width: 719px) {
+        .container { padding-inline: var(--container-gutter-phone); }
+        .page { padding-block: var(--space-5); }
+        .gallery-thumbs { gap: var(--space-2); }
+        .similar-card { flex-basis: 200px; }
+        .site-footer .container { flex-direction: column; align-items: flex-start; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html { scroll-behavior: auto; }
+        * {
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+        }
+      }
+    </style>
+  
+
+    <!-- OD MICRO-INTERACTIONS START -->
+    <style data-micro-interactions="css">
+      /* Cross-page micro-interactions: focus ring, link slide underline,
+         button press, lazy image fade, dialog rise, scroll progress. */
+
+      :focus-visible {
+        outline: 2px solid var(--accent, #635bff);
+        outline-offset: 4px;
+        transition: outline-color 120ms ease;
+      }
+
+      /* Unify link underline into one animated system. !important suppresses
+         per-page text-decoration so only the slide underline renders; the
+         element-level background-image only affects painting, never layout. */
+      a {
+        text-decoration: none !important;
+        background-image: linear-gradient(currentColor, currentColor);
+        background-repeat: no-repeat;
+        background-position: 0 100%;
+        background-size: 0 1px;
+        background-origin: border-box;
+        transition:
+          background-size 150ms cubic-bezier(0.2, 0, 0, 1),
+          color 150ms ease,
+          background-color 150ms ease,
+          border-color 150ms ease,
+          opacity 150ms ease,
+          transform 150ms ease;
+      }
+      a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover {
+        background-size: 100% 1px;
+      }
+
+      button:not(.pwd-toggle):active,
+      .btn:active,
+      [role="button"]:active {
+        transform: scale(0.98);
+      }
+
+      @keyframes micro-rise {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      [role="dialog"] > *,
+      .drawer-inner > *,
+      .drawer-panel > * {
+        animation: micro-rise 260ms cubic-bezier(0.2, 0, 0, 1) both;
+      }
+      [role="dialog"] > * + *,
+      .drawer-inner > * + *,
+      .drawer-panel > * + * {
+        animation-delay: 50ms;
+      }
+
+      img[loading="lazy"] {
+        opacity: 0.8;
+        transition: opacity 260ms ease;
+      }
+      img[loading="lazy"].micro-loaded { opacity: 1; }
+
+      #scroll-progress {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%;
+        height: 2px;
+        transform: scaleX(var(--micro-prog, 0));
+        transform-origin: left center;
+        background: var(--accent, #635bff);
+        z-index: 1000;
+        pointer-events: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        a { background-image: none; }
+        a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover { background-size: 0 1px; }
+        button:not(.pwd-toggle):active,
+        .btn:active,
+        [role="button"]:active { transform: none; }
+        [role="dialog"] > *,
+        .drawer-inner > *,
+        .drawer-panel > * { animation: none; }
+        img[loading="lazy"] { opacity: 1; transition: none; }
+        #scroll-progress { transform: none; }
+      }
+    </style>
+    <!-- /OD MICRO-INTERACTIONS -->
+
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main">Bỏ qua điều hướng</a>
+
+    <header class="site-header">
+      <div class="container">
+        <a class="brand" href="index.html" aria-label="AuctionHub trang chủ">
+          AuctionHub<span class="brand-dot">.</span>
+        </a>
+
+        <nav class="nav" aria-label="Điều hướng chính">
+          <a class="nav-link" href="index.html">Trang chủ</a>
+          <a class="nav-link" href="index.html#phien-dang-dien-ra">Phiên đang diễn ra</a>
+          <a class="nav-link" href="index.html#how-it-works">Cách hoạt động</a>
+        </nav>
+
+        <a class="btn btn-ghost" href="login.html">Đăng nhập</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <div class="container">
+        <nav class="crumbs" aria-label="Chuỗi điều hướng">
+          <a href="index.html">Trang chủ</a>
+          <span class="sep" aria-hidden="true">/</span>
+          <a href="index.html#features">Phiên đấu giá</a>
+          <span class="sep" aria-hidden="true">/</span>
+          <span>MacBook Pro 14 M3 2023</span>
+        </nav>
+
+        <div class="page">
+          <div class="detail-grid">
+            <!-- ═══ LEFT COLUMN ═══ -->
+            <div class="col-left">
+              <section class="gallery" id="gallery" aria-label="Thư viện ảnh sản phẩm">
+                <figure class="gallery-main">
+                  <img
+                    id="main-image"
+                    src="images/laptop.jpg"
+                    alt="MacBook Pro 14 inch M3 chụp trên bàn trắng"
+                    width="800"
+                    height="800"
+                  />
+                </figure>
+
+                <div class="gallery-actions">
+                  <span class="gallery-meta tnum">4 ảnh thật của sản phẩm</span>
+                  <button class="gallery-link" id="lightbox-open" type="button">
+                    <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <circle cx="9" cy="9" r="2" />
+                      <path d="m21 15-3.5-3.5a2 2 0 0 0-2.8 0L6 20" />
+                    </svg>
+                    Xem tất cả ảnh
+                  </button>
+                </div>
+
+                <ul class="gallery-thumbs" aria-label="Chọn ảnh">
+                  <li class="thumb-wrap">
+                    <button
+                      class="gallery-thumb is-active"
+                      type="button"
+                      data-src="images/laptop.jpg"
+                      data-alt="MacBook Pro 14 inch M3 chụp trên bàn trắng"
+                      aria-label="Ảnh 1: MacBook Pro 14 inch M3 trên bàn trắng"
+                      aria-pressed="true"
+                    >
+                      <img
+                        src="images/laptop.jpg"
+                        alt="MacBook Pro 14 inch M3 chụp trên bàn trắng"
+                        width="800"
+                        height="800"
+                        loading="lazy"
+                      />
+                    </button>
+                  </li>
+                  <li class="thumb-wrap">
+                    <button
+                      class="gallery-thumb"
+                      type="button"
+                      data-src="images/mbp-front.jpg"
+                      data-alt="MacBook Pro 14 inch M3 màu xám không gian nhìn từ trước"
+                      aria-label="Ảnh 2: MacBook Pro 14 inch M3 nhìn từ trước"
+                      aria-pressed="false"
+                    >
+                      <img
+                        src="images/mbp-front.jpg"
+                        alt="MacBook Pro 14 inch M3 màu xám không gian nhìn từ trước"
+                        width="1600"
+                        height="1067"
+                        loading="lazy"
+                      />
+                    </button>
+                  </li>
+                  <li class="thumb-wrap">
+                    <button
+                      class="gallery-thumb"
+                      type="button"
+                      data-src="images/mbp-side.jpg"
+                      data-alt="MacBook Pro 14 inch M3 màu xám không gian nhìn từ cạnh nghiêng"
+                      aria-label="Ảnh 3: MacBook Pro 14 inch M3 nhìn từ cạnh nghiêng"
+                      aria-pressed="false"
+                    >
+                      <img
+                        src="images/mbp-side.jpg"
+                        alt="MacBook Pro 14 inch M3 màu xám không gian nhìn từ cạnh nghiêng"
+                        width="904"
+                        height="840"
+                        loading="lazy"
+                      />
+                    </button>
+                  </li>
+                  <li class="thumb-wrap">
+                    <button
+                      class="gallery-thumb"
+                      type="button"
+                      data-src="images/mbp-angle.jpg"
+                      data-alt="MacBook Pro 14 inch M3 mở nắp chụp từ góc cao"
+                      aria-label="Ảnh 4: MacBook Pro 14 inch M3 mở nắp chụp từ góc cao"
+                      aria-pressed="false"
+                    >
+                      <img
+                        src="images/mbp-angle.jpg"
+                        alt="MacBook Pro 14 inch M3 mở nắp chụp từ góc cao"
+                        width="1600"
+                        height="1280"
+                        loading="lazy"
+                      />
+                    </button>
+                  </li>
+                </ul>
+              </section>
+
+              <section class="item-info" aria-labelledby="item-title">
+                <h1 class="item-title" id="item-title">MacBook Pro 14 M3 2023</h1>
+
+                <ul class="item-facts">
+                  <li>
+                    <span class="cond-badge">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M20 6 9 17l-5-5" />
+                      </svg>
+                      Like New
+                    </span>
+                    <span class="body-meta">98% pin</span>
+                  </li>
+                  <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    Quận 1, TP.HCM
+                  </li>
+                  <li class="body-meta tnum">25 lượt trả giá · 431 lượt xem</li>
+                </ul>
+              </section>
+
+              <section class="block desc" aria-labelledby="desc-title">
+                <h2 id="desc-title">Mô tả sản phẩm</h2>
+                <ul class="desc-list">
+                  <li>Màn hình Liquid Retina XDR 14,2 inch, độ sáng tối đa 1.600 nit, hỗ trợ HDR và ProMotion 120Hz.</li>
+                  <li>Chip Apple M3 với 8 nhân CPU và 10 nhân GPU, 16 GB RAM hợp nhất, ổ cứng SSD 1 TB.</li>
+                  <li>Pin lên đến 22 giờ xem phim, sạc nhanh qua cổng MagSafe 3 kèm củ sạc 70W.</li>
+                  <li>Wi-Fi 6E, Bluetooth 5.3, hai cổng Thunderbolt/USB 4, cổng HDMI và khe cắm thẻ SDXC.</li>
+                </ul>
+
+                <h3>Tình trạng</h3>
+                <ul class="desc-list">
+                  <li>Máy Like New, sạc đầy còn 98% pin, không trầy xước, bàn phím không mờ chữ.</li>
+                  <li>Màn hình nguyên bản, không vào nước, không qua sửa chữa.</li>
+                  <li>Còn lại khoảng 6 tháng bảo hành chính hãng.</li>
+                </ul>
+
+                <h3>Phụ kiện kèm theo</h3>
+                <ul class="desc-list">
+                  <li>Hộp nguyên bản, củ sạc 70W, cáp USB-C to MagSafe 3 dài 2 mét.</li>
+                  <li>Hóa đơn mua hàng và đầy đủ sách hướng dẫn.</li>
+                </ul>
+              </section>
+
+              <section class="seller-outer" aria-label="Thông tin người bán">
+                <div class="seller-row">
+                  <span class="avatar-lg" aria-hidden="true">TS</span>
+                  <div class="seller-id">
+                    <span class="seller-name">
+                      TechStore VN
+                      <span class="verified-badge">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <path d="M20 6 9 17l-5-5" />
+                        </svg>
+                        Verified
+                      </span>
+                    </span>
+                    <span class="seller-meta">
+                      <span aria-hidden="true">4.8</span>
+                      <span class="tnum">★</span>
+                      <span> · 1.240 đánh giá</span>
+                    </span>
+                  </div>
+                </div>
+
+                <ul class="seller-facts">
+                  <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5.6a8.5 8.5 0 1 1 16.1-3.9Z" />
+                    </svg>
+                    Phản hồi trong 15 phút
+                  </li>
+                  <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <circle cx="12" cy="12" r="9" />
+                      <path d="M12 7v5l3 2" />
+                    </svg>
+                    Thành viên từ 2022
+                  </li>
+                </ul>
+
+                <a class="btn btn-ghost" href="#" aria-label="Xem hồ sơ người bán TechStore VN">Xem profile</a>
+              </section>
+
+              <section class="similar" id="similar" aria-labelledby="similar-title">
+                <div class="block-head">
+                  <h2 id="similar-title">Phiên tương tự</h2>
+                  <p class="body-meta">Các phiên đấu giá thiết bị công nghệ đang diễn ra.</p>
+                </div>
+
+                <div class="similar-rail">
+                  <article class="similar-card">
+                    <div class="media">
+                      <img
+                        src="images/phone.jpg"
+                        alt="iPhone 15 Pro Max 256GB màu tự nhiên"
+                        width="600"
+                        height="400"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div class="similar-body">
+                      <h3 class="card-title">iPhone 15 Pro Max 256GB</h3>
+                      <div class="similar-price-row">
+                        <span class="similar-price tnum">24.800.000đ</span>
+                        <span class="similar-timer tnum">06:12:40</span>
+                      </div>
+                      <a class="btn btn-ghost" href="auction-detail.html">Đặt giá</a>
+                    </div>
+                  </article>
+
+                  <article class="similar-card">
+                    <div class="media">
+                      <img
+                        src="images/tablet.jpg"
+                        alt="iPad Pro 11 inch M4 256GB"
+                        width="600"
+                        height="427"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div class="similar-body">
+                      <h3 class="card-title">iPad Pro 11 M4 256GB</h3>
+                      <div class="similar-price-row">
+                        <span class="similar-price tnum">21.500.000đ</span>
+                        <span class="similar-timer tnum">19:04:11</span>
+                      </div>
+                      <a class="btn btn-ghost" href="auction-detail.html">Đặt giá</a>
+                    </div>
+                  </article>
+
+                  <article class="similar-card">
+                    <div class="media">
+                      <img
+                        src="images/headphones.jpg"
+                        alt="Tai nghe chụp tai cao cấp màu xám"
+                        width="600"
+                        height="400"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div class="similar-body">
+                      <h3 class="card-title">AirPods Max 2024</h3>
+                      <div class="similar-price-row">
+                        <span class="similar-price tnum">6.900.000đ</span>
+                        <span class="similar-timer tnum">03:00:20</span>
+                      </div>
+                      <a class="btn btn-ghost" href="auction-detail.html">Đặt giá</a>
+                    </div>
+                  </article>
+
+                  <article class="similar-card">
+                    <div class="media">
+                      <img
+                        src="images/mbp-front.jpg"
+                        alt="MacBook Pro 14 inch M3 màu xám không gian nhìn từ trước"
+                        width="1600"
+                        height="1067"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div class="similar-body">
+                      <h3 class="card-title">MacBook Pro 14 M3 Pro 2024</h3>
+                      <div class="similar-price-row">
+                        <span class="similar-price tnum">42.300.000đ</span>
+                        <span class="similar-timer tnum">11:27:05</span>
+                      </div>
+                      <a class="btn btn-ghost" href="auction-detail.html">Đặt giá</a>
+                    </div>
+                  </article>
+                </div>
+              </section>
+            </div>
+
+            <!-- ═══ RIGHT COLUMN ═══ -->
+            <aside class="col-right" aria-label="Bảng điều khiển đấu giá">
+              <div class="bid-panel">
+                <div class="panel-status">
+                  <span class="label">Trạng thái</span>
+                  <span class="status-chip">
+                    <span class="chip-dot" aria-hidden="true"></span>
+                    Đã kết thúc
+                  </span>
+                  <span class="panel-meta tnum">Kết thúc lúc 12:46 hôm nay · 25 lượt trả giá</span>
+                </div>
+
+                <div class="ended-banner" role="status">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M20 6 9 17l-5-5" />
+                  </svg>
+                  <div class="ended-banner-text">
+                    <p>Phiên đã kết thúc. Người thắng: <strong>Nguyễn V.***</strong>, <strong class="tnum">37.500.000đ</strong>.</p>
+                    <a href="#similar">Xem phiên tương tự</a>
+                  </div>
+                </div>
+
+                <div class="price-hero">
+                  <span class="label">Giá trúng đấu giá</span>
+                  <span class="price-big" id="current-price">37.500.000đ</span>
+                  <span class="price-start tnum">Giá khởi điểm 28.000.000đ · Bước giá 500.000đ</span>
+                </div>
+
+                <hr class="divider" />
+
+                <form class="bid-form" id="bid-form" novalidate>
+                  <div class="od-stack" style="--od-gap: 8px">
+                    <label class="field-label" for="bid-input">Giá trả mới</label>
+                    <div class="stepper">
+                      <button
+                        class="stepper-btn"
+                        id="bid-minus"
+                        type="button"
+                        aria-label="Giảm giá năm trăm nghìn đồng"
+                        disabled
+                      >
+                        &minus;
+                      </button>
+                      <input
+                        class="bid-input tnum"
+                        id="bid-input"
+                        type="text"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        value="38.000.000"
+                        disabled
+                        title="Phiên đã kết thúc"
+                        aria-describedby="bid-ended-hint"
+                      />
+                      <button
+                        class="stepper-btn"
+                        id="bid-plus"
+                        type="button"
+                        aria-label="Tăng giá năm trăm nghìn đồng"
+                        disabled
+                      >
+                        &plus;
+                      </button>
+                    </div>
+                    <p class="bid-hint" id="bid-ended-hint">Phiên đã kết thúc lúc 12:46 hôm nay. Không thể đặt giá.</p>
+                  </div>
+
+                  <button class="btn btn-primary btn-callout" id="bid-submit" type="submit" disabled title="Phiên đã kết thúc">
+                    Đặt giá
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M5 12h14M13 6l6 6-6 6" />
+                    </svg>
+                  </button>
+
+                  <div class="auto-field">
+                    <div class="switch-row">
+                      <label class="switch-label" for="auto-toggle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <circle cx="12" cy="12" r="3" />
+                          <path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3" />
+                        </svg>
+                        Đặt giá tối đa (Auto-bid)
+                      </label>
+                      <button
+                        class="switch"
+                        id="auto-toggle"
+                        type="button"
+                        role="switch"
+                        aria-checked="false"
+                        aria-label="Bật hoặc tắt Auto-bid"
+                        disabled
+                      >
+                        <span class="knob" aria-hidden="true"></span>
+                      </button>
+                    </div>
+                  </div>
+                </form>
+
+                <hr class="divider" />
+
+                <section class="history" aria-labelledby="history-title">
+                  <div class="history-head">
+                    <span class="label" id="history-title">Lịch sử trả giá gần nhất</span>
+                    <button class="history-toggle" id="history-toggle" type="button" aria-expanded="false">
+                      Xem tất cả 25 lượt
+                    </button>
+                  </div>
+                  <ul class="history-list" id="history-list" aria-label="Lịch sử trả giá của phiên">
+                    <li class="is-highest">
+                      <span class="bidder-name">
+                        Nguyễn V.***
+                        <span class="lead-flag">
+                          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M20 6 9 17l-5-5" />
+                          </svg>
+                          Người thắng
+                        </span>
+                      </span>
+                      <span class="bidder-price tnum">37.500.000đ</span>
+                      <span class="bidder-time">thắng · 5 phút trước khi kết thúc</span>
+                    </li>
+                    <li>
+                      <span class="bidder-name">
+                        Người dùng ẩn danh
+                        <span class="auto-flag">Tự động</span>
+                      </span>
+                      <span class="bidder-price tnum">37.500.000đ</span>
+                      <span class="bidder-time">6 phút trước khi kết thúc</span>
+                    </li>
+                    <li>
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">35.500.000đ</span>
+                      <span class="bidder-time">12 phút trước khi kết thúc</span>
+                    </li>
+                    <li>
+                      <span class="bidder-name">
+                        Người dùng ẩn danh
+                        <span class="auto-flag">Tự động</span>
+                      </span>
+                      <span class="bidder-price tnum">35.500.000đ</span>
+                      <span class="bidder-time">13 phút trước</span>
+                    </li>
+                    <li>
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">34.900.000đ</span>
+                      <span class="bidder-time">22 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">34.700.000đ</span>
+                      <span class="bidder-time">28 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">
+                        Người dùng ẩn danh
+                        <span class="auto-flag">Tự động</span>
+                      </span>
+                      <span class="bidder-price tnum">34.700.000đ</span>
+                      <span class="bidder-time">28 phút trước</span>
+                    </li>
+                    <li class="is-collapsed is-cancelled">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum"><s>34.200.000đ</s> <span class="cancelled-note">— đã hủy</span></span>
+                      <span class="bidder-time">32 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">34.000.000đ</span>
+                      <span class="bidder-time">45 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">33.600.000đ</span>
+                      <span class="bidder-time">1 giờ 9 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">33.300.000đ</span>
+                      <span class="bidder-time">1 giờ 15 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">33.000.000đ</span>
+                      <span class="bidder-time">1 giờ 22 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">32.800.000đ</span>
+                      <span class="bidder-time">1 giờ 28 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">32.500.000đ</span>
+                      <span class="bidder-time">1 giờ 35 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">32.000.000đ</span>
+                      <span class="bidder-time">1 giờ 41 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">31.700.000đ</span>
+                      <span class="bidder-time">1 giờ 48 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">31.500.000đ</span>
+                      <span class="bidder-time">1 giờ 54 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">31.000.000đ</span>
+                      <span class="bidder-time">2 giờ 1 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">30.800.000đ</span>
+                      <span class="bidder-time">2 giờ 7 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">30.500.000đ</span>
+                      <span class="bidder-time">2 giờ 14 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">30.300.000đ</span>
+                      <span class="bidder-time">2 giờ 19 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">29.900.000đ</span>
+                      <span class="bidder-time">2 giờ 24 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">29.400.000đ</span>
+                      <span class="bidder-time">2 giờ 26 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">29.000.000đ</span>
+                      <span class="bidder-time">2 giờ 28 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">28.500.000đ</span>
+                      <span class="bidder-time">2 giờ 29 phút trước</span>
+                    </li>
+                    <li class="is-collapsed">
+                      <span class="bidder-name">Người dùng ẩn danh</span>
+                      <span class="bidder-price tnum">28.000.000đ</span>
+                      <span class="bidder-time">2 giờ 31 phút trước</span>
+                    </li>
+                  </ul>
+                </section>
+
+                <hr class="divider" />
+
+                <ul class="trust-badges" aria-label="Cam kết của AuctionHub">
+                  <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" />
+                      <path d="M9 12l2 2 4-4" />
+                    </svg>
+                    Escrow VNPay
+                  </li>
+                  <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z" />
+                    </svg>
+                    Hoàn tiền trong 7 ngày
+                  </li>
+                  <li>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M4 13a8 8 0 0 1 16 0" />
+                      <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
+                      <path d="M3 18h18c0 2-1.5 3-3 3h-4" />
+                      <path d="M10 21h4" />
+                    </svg>
+                    Hotline 1900 6868
+                  </li>
+                </ul>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <span>© 2026 AuctionHub JSC. Phiên đấu giá minh họa cho bản prototype.</span>
+        <a href="index.html">Quay về trang chủ</a>
+      </div>
+    </footer>
+
+    <!-- ═══ LIGHTBOX ═══ -->
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Xem đầy đủ ảnh sản phẩm" hidden>
+      <button class="lightbox-close" id="lightbox-close" type="button" aria-label="Đóng ảnh">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
+      <div class="lightbox-inner">
+        <div class="lightbox-main">
+          <img id="lightbox-image" src="images/laptop.jpg" alt="MacBook Pro 14 inch M3 chụp trên bàn trắng" />
+        </div>
+        <ul class="lightbox-thumbs" aria-label="Chọn ảnh">
+          <li>
+            <button
+              class="gallery-thumb is-active"
+              type="button"
+              data-src="images/laptop.jpg"
+              data-alt="MacBook Pro 14 inch M3 chụp trên bàn trắng"
+              aria-label="Ảnh 1: MacBook Pro 14 inch M3 trên bàn trắng"
+              aria-pressed="true"
+            >
+              <img src="images/laptop.jpg" alt="MacBook Pro 14 inch M3 chụp trên bàn trắng" width="800" height="800" />
+            </button>
+          </li>
+          <li>
+            <button
+              class="gallery-thumb"
+              type="button"
+              data-src="images/mbp-front.jpg"
+              data-alt="MacBook Pro 14 inch M3 màu xám không gian nhìn từ trước"
+              aria-label="Ảnh 2: MacBook Pro 14 inch M3 nhìn từ trước"
+              aria-pressed="false"
+            >
+              <img src="images/mbp-front.jpg" alt="MacBook Pro 14 inch M3 màu xám không gian nhìn từ trước" width="1600" height="1067" />
+            </button>
+          </li>
+          <li>
+            <button
+              class="gallery-thumb"
+              type="button"
+              data-src="images/mbp-side.jpg"
+              data-alt="MacBook Pro 14 inch M3 màu xám không gian nhìn từ cạnh nghiêng"
+              aria-label="Ảnh 3: MacBook Pro 14 inch M3 nhìn từ cạnh nghiêng"
+              aria-pressed="false"
+            >
+              <img src="images/mbp-side.jpg" alt="MacBook Pro 14 inch M3 màu xám không gian nhìn từ cạnh nghiêng" width="904" height="840" />
+            </button>
+          </li>
+          <li>
+            <button
+              class="gallery-thumb"
+              type="button"
+              data-src="images/mbp-angle.jpg"
+              data-alt="MacBook Pro 14 inch M3 mở nắp chụp từ góc cao"
+              aria-label="Ảnh 4: MacBook Pro 14 inch M3 mở nắp chụp từ góc cao"
+              aria-pressed="false"
+            >
+              <img src="images/mbp-angle.jpg" alt="MacBook Pro 14 inch M3 mở nắp chụp từ góc cao" width="1600" height="1280" />
+            </button>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var $ = function (sel, root) { return (root || document).querySelector(sel); };
+        var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+
+        /* ── Gallery swap ── */
+        var mainImage = $("#main-image");
+        var thumbs = $$(".gallery .gallery-thumb");
+        var setActiveThumb = function (activeThumb, scope) {
+          $$(".gallery-thumb", scope || document).forEach(function (t) {
+            var active = t === activeThumb;
+            t.classList.toggle("is-active", active);
+            t.setAttribute("aria-pressed", String(active));
+          });
+        };
+        thumbs.forEach(function (thumb) {
+          thumb.addEventListener("click", function () {
+            mainImage.src = thumb.getAttribute("data-src");
+            mainImage.alt = thumb.getAttribute("data-alt");
+            setActiveThumb(thumb, $(".gallery"));
+          });
+        });
+
+        /* ── Lightbox ── */
+        var lightbox = $("#lightbox");
+        var lightboxImage = $("#lightbox-image");
+        var openLightbox = function (fromSrc) {
+          if (fromSrc) lightboxImage.src = fromSrc;
+          var lbThumbs = $$(".lightbox-thumbs .gallery-thumb");
+          lbThumbs.forEach(function (t) {
+            var active = t.getAttribute("data-src") === lightboxImage.getAttribute("src");
+            t.classList.toggle("is-active", active);
+            t.setAttribute("aria-pressed", String(active));
+          });
+          lightbox.hidden = false;
+          lightbox.classList.add("open");
+          document.body.style.overflow = "hidden";
+        };
+        var closeLightbox = function () {
+          lightbox.classList.remove("open");
+          lightbox.hidden = true;
+          document.body.style.overflow = "";
+        };
+        $("#lightbox-open").addEventListener("click", function () {
+          openLightbox(mainImage.getAttribute("src"));
+        });
+        $("#lightbox-close").addEventListener("click", closeLightbox);
+        $$(".lightbox-thumbs .gallery-thumb").forEach(function (thumb) {
+          thumb.addEventListener("click", function () {
+            lightboxImage.src = thumb.getAttribute("data-src");
+            lightboxImage.alt = thumb.getAttribute("data-alt");
+            setActiveThumb(thumb, $(".lightbox-thumbs"));
+          });
+        });
+        lightbox.addEventListener("click", function (e) {
+          if (e.target === lightbox) closeLightbox();
+        });
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape" && !lightbox.hidden) closeLightbox();
+        });
+
+        /* ── History toggle ── */
+        var bidCount = 25;
+        var historyVisible = 5;
+        var historyToggle = $("#history-toggle");
+        var refreshHistoryToggle = function () {
+          historyToggle.textContent = historyVisible >= bidCount
+            ? "Thu gọn lịch sử"
+            : "Xem tất cả " + bidCount + " lượt";
+          historyToggle.setAttribute("aria-expanded", String(historyVisible > 5));
+        };
+        historyToggle.addEventListener("click", function () {
+          var collapsed = $$(".history-list li.is-collapsed");
+          if (historyVisible >= bidCount) {
+            collapsed.forEach(function (li) { li.classList.add("is-collapsed"); });
+            historyVisible = 5;
+          } else {
+            collapsed.forEach(function (li) { li.classList.remove("is-collapsed"); });
+            historyVisible = bidCount;
+          }
+          refreshHistoryToggle();
+        });
+        refreshHistoryToggle();
+      })();
+    </script>
+  
+
+    <script data-micro-interactions="js">
+      (function () {
+        var lazy = document.querySelectorAll('img[loading="lazy"]');
+        for (var i = 0; i < lazy.length; i++) {
+          (function (img) {
+            if (img.complete) { img.classList.add("micro-loaded"); return; }
+            img.addEventListener("load", function () {
+              img.classList.add("micro-loaded");
+            });
+          })(lazy[i]);
+        }
+
+        var bar = document.getElementById("scroll-progress");
+        if (!bar) return;
+        function paint() {
+          var doc = document.documentElement;
+          var max = doc.scrollHeight - window.innerHeight;
+          var p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+          bar.style.setProperty("--micro-prog", p.toFixed(4));
+        }
+        window.addEventListener("scroll", paint, { passive: true });
+        window.addEventListener("resize", paint);
+        paint();
+      })();
+    </script>
+
+  </body>
+</html>

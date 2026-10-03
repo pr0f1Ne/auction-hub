@@ -1,0 +1,1472 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AuctionHub | Đơn hàng</title>
+    <meta
+      name="description"
+      content="Trang quản lý đơn hàng của TechStore VN trên AuctionHub: 3 đơn chờ giao, 2 đơn đang vận chuyển, 7 đơn hoàn thành tháng này. Xác nhận gửi hàng kèm mã vận đơn."
+    />
+
+    <style>
+      /* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio.
+         Put this @layer first; product CSS outside the layer always wins. */
+      @layer od-layout {
+        :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+
+        /* containers */
+        .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+        .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+        .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+        .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+        .od-fill    { flex: 1 1 0; min-width: 0; }
+        .od-fixed   { flex: none; }
+        .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+
+        /* stacked information: each piece is its own line — never sibling inline spans */
+        .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+        :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+        .od-tile { display: grid; grid-template-rows: auto 1fr; }
+        :where(.od-tile) > :where(*) { display: block; }
+
+        /* media keeps its intrinsic ratio by default; never a distorted or cropped
+           cover by accident. height:auto lets the ratio win over an <img height="…">
+           attribute. Cropping to a uniform box is an explicit opt-in: set --od-ratio
+           AND add .od-media-cover together (per the core rule, only where a crop is
+           deliberate — tile thumbs, decorative fills — never on full-frame content). */
+        .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+        .od-media-cover { object-fit: cover; }
+
+        /* data text only — authored copy is rewritten to its budget instead */
+        .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+        .od-clamp-2 { -webkit-line-clamp: 2; }
+        .od-clamp-3 { -webkit-line-clamp: 3; }
+        .od-lines-2 { min-height: calc(2 * 1.4em); }   /* block-level reservation for a shared baseline */
+        .od-nowrap  { white-space: nowrap; }           /* 数字+单位 · 价格+起 · 日期+星期 */
+        .od-keep    { word-break: keep-all; overflow-wrap: anywhere; } /* CJK labels break at spaces / <wbr> first */
+
+        /* screen skeleton (optional): bars take their own space, the middle scrolls — no padding guessed for chrome */
+        .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+        .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+
+        /* horizontal rail: the next item peeks at the edge; trailing room survives overflow */
+        .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+                   padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+        .od-rail::-webkit-scrollbar { display: none; }
+        :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+        :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+
+        .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+        .od-touch  { min-width: 44px; min-height: 44px; }
+      }
+      /* /OD-LAYOUT-PRIMITIVES v1 */
+
+      /* ─── Design tokens ─────────────────────────────────────────── */
+      :root {
+        --bg:           #ffffff;
+        --surface:      #ffffff;
+        --surface-warm: #fafafa;
+        --surface-side: #f9fafb;
+
+        --fg:    #1a1a1a;
+        --fg-2:  #374151;
+        --muted: #6b7280;
+        --meta:  var(--muted);
+
+        --border:      #e5e7eb;
+        --border-soft: var(--border);
+
+        --accent:    #635bff;
+        --accent-on: #ffffff;
+
+        --accent-hover:  #5851df;
+        --accent-active: #4f46d6;
+
+        --success:      #15be53;
+        --success-text: #0b7a44;
+        --success-bg:   #eaf7f1;
+        --warn:         #9b6829;
+        --danger:       #ea2261;
+        --danger-text:  #b4233e;
+        --danger-bg:    #fbeeef;
+        --urgent:       #ef4444;
+
+        --amber-text: #b45309;
+        --amber-bg:   #fef3c7;
+        --blue-text:  #1d4ed8;
+        --blue-bg:    #eff6ff;
+        --gray-text:  #6b7280;
+        --gray-bg:    #f3f4f6;
+
+        --on-dark:       #ffffff;
+        --on-dark-muted: rgba(255, 255, 255, 0.72);
+        --dark-bg:       #1a1a1a;
+        --dark-bg-2:     #111113;
+
+        --font-display:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-body:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-mono:
+          "SourceCodePro", "Source Code Pro",
+          ui-monospace, "SF Mono", "JetBrains Mono",
+          Menlo, Monaco, Consolas, monospace;
+
+        --text-xs:   12px;
+        --text-sm:   14px;
+        --text-base: 16px;
+        --text-lg:   18px;
+        --text-xl:   22px;
+        --text-2xl:  28px;
+
+        --leading-body:     1.55;
+        --leading-tight:    1.1;
+        --tracking-display: -0.02em;
+
+        --space-1:  4px;
+        --space-2:  8px;
+        --space-3:  12px;
+        --space-4:  16px;
+        --space-5:  20px;
+        --space-6:  24px;
+        --space-8:  32px;
+        --space-12: 48px;
+
+        --radius-sm: 4px;
+        --radius-md: 6px;
+        --radius-lg: 8px;
+
+        --elev-flat:   none;
+        --elev-ring:   0 0 0 1px var(--border);
+        --elev-soft:
+          rgba(50, 50, 93, 0.06) 0px 6px 18px -6px,
+          rgba(0,   0,  0, 0.06) 0px 3px 8px  -4px;
+
+        --motion-fast:   150ms;
+        --motion-base:   200ms;
+        --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+        --sidebar-w: 240px;
+        --content-pad: 32px;
+
+        --focus-ring: 0 0 0 3px rgba(99, 91, 255, 0.28);
+      }
+
+      /* ─── Base ──────────────────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--font-body);
+        font-size: var(--text-base);
+        line-height: var(--leading-body);
+        font-weight: 400;
+        font-feature-settings: "ss01";
+        -webkit-font-smoothing: antialiased;
+      }
+      img { max-width: 100%; }
+      strong { font-weight: 600; }
+      a { color: var(--accent); text-decoration: none; }
+      button { font-family: inherit; }
+
+      .tnum { font-feature-settings: "tnum", "ss01"; }
+      .mono { font-family: var(--font-mono); font-feature-settings: "tnum"; }
+
+      :focus-visible {
+        outline: none;
+        box-shadow: var(--focus-ring);
+        border-radius: var(--radius-sm);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          transition-duration: 0.01ms !important;
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+        }
+      }
+
+      /* ─── App shell ─────────────────────────────────────────── */
+      .app { display: flex; min-height: 100vh; }
+
+      /* Sidebar */
+      .sidebar {
+        flex: none;
+        width: var(--sidebar-w);
+        background: var(--surface-side);
+        border-right: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+      }
+
+      .side-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 20px 20px 16px;
+        font-weight: 600;
+        font-size: var(--text-lg);
+        letter-spacing: var(--tracking-display);
+      }
+      .side-brand svg { display: block; }
+      .side-brand .mark {
+        width: 28px; height: 28px;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 14px;
+        letter-spacing: 0;
+      }
+
+      .side-nav { flex: 1; padding: 8px 12px; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; }
+      .side-nav a {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 9px 12px;
+        border-radius: 6px;
+        color: var(--fg-2);
+        font-size: var(--text-sm);
+        line-height: 1.2;
+        transition: background var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+      }
+      .side-nav a:hover { background: var(--surface-warm); color: var(--fg); }
+      .side-nav a[aria-current="page"] {
+        background: #eceaff;
+        color: var(--accent-active);
+        font-weight: 600;
+      }
+      .side-nav svg { flex: none; width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.5; }
+      .side-nav a .count {
+        margin-left: auto;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+        background: var(--surface-warm);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 1px 8px;
+      }
+      .side-nav a[aria-current="page"] .count { color: var(--accent-active); background: #fff; }
+
+      .side-user {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--border);
+      }
+      .side-user .avatar {
+        flex: none;
+        width: 34px; height: 34px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .side-user .usermeta { min-width: 0; }
+      .side-user .usermeta b { display: block; font-size: 13px; line-height: 1.3; color: var(--fg); }
+      .side-user .badge {
+        display: inline-block;
+        margin-top: 2px;
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--accent-active);
+        background: #eceaff;
+        border-radius: 999px;
+        padding: 1px 8px;
+        line-height: 1.5;
+      }
+
+      /* Main */
+      .main { flex: 1; min-width: 0; }
+      .content { max-width: 1180px; margin-inline: auto; padding: 28px var(--content-pad) 56px; }
+
+      .page-head { display: flex; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+      .page-head h1 { font-size: var(--text-xl); font-weight: 600; letter-spacing: var(--tracking-display); line-height: 1.2; margin: 0; }
+      .page-head .sub { margin-top: 4px; color: var(--muted); font-size: var(--text-sm); }
+
+      .head-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+      .range-picker { position: relative; }
+      .range-picker select {
+        appearance: none;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: #fff;
+        color: var(--fg-2);
+        font-size: var(--text-sm);
+        font-family: inherit;
+        padding: 8px 34px 8px 12px;
+        cursor: pointer;
+        transition: border-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
+      }
+      .range-picker select:hover { border-color: #d1d5db; }
+      .range-picker::after {
+        content: "";
+        position: absolute;
+        right: 14px; top: 50%;
+        width: 8px; height: 8px;
+        border-right: 1.5px solid var(--muted);
+        border-bottom: 1.5px solid var(--muted);
+        transform: translateY(-70%) rotate(45deg);
+        pointer-events: none;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border-radius: 6px;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        line-height: 1.2;
+        padding: 9px 16px;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: background var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard);
+      }
+      .btn-primary { background: var(--accent); color: #fff; }
+      .btn-primary:hover { background: var(--accent-hover); }
+      .btn-primary:active { background: var(--accent-active); }
+      .btn-ghost { background: #fff; border-color: var(--border); color: var(--fg-2); }
+      .btn-ghost:hover { border-color: #d1d5db; color: var(--fg); }
+
+      /* Tabs (underline) */
+      .tabs {
+        display: flex;
+        gap: 4px;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .tabs::-webkit-scrollbar { display: none; }
+      .tabs button {
+        appearance: none;
+        border: 0;
+        background: transparent;
+        padding: 10px 14px;
+        font: inherit;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--fg-2);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        white-space: nowrap;
+        transition: color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard);
+      }
+      .tabs button:hover { color: var(--fg); }
+      .tabs button[aria-selected="true"] {
+        color: var(--accent-active);
+        font-weight: 600;
+        border-bottom-color: var(--accent);
+      }
+      .tabs .tcount {
+        display: inline-block;
+        margin-left: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        font-feature-settings: "tnum", "ss01";
+        color: var(--muted);
+        background: var(--gray-bg);
+        border-radius: 999px;
+        padding: 1px 7px;
+        line-height: 1.5;
+      }
+      .tabs button[aria-selected="true"] .tcount { color: var(--accent-active); background: #eceaff; }
+
+      .order-note { margin: 14px 0 10px; color: var(--muted); font-size: var(--text-sm); }
+
+      /* Table */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+      }
+      .tbl-scroll { max-height: 480px; overflow-y: auto; }
+      .tbl { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+      .tbl thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+        background: var(--surface-warm);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        text-align: left;
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+      }
+      .tbl tbody td { padding: 12px 16px; border-bottom: 1px solid var(--border-soft); vertical-align: middle; color: var(--fg-2); }
+      .tbl tbody tr:last-child td { border-bottom: 0; }
+      .tbl tbody tr { transition: background var(--motion-fast) var(--ease-standard); }
+      .tbl tbody tr:hover { background: var(--surface-warm); }
+
+      .od-id { font-family: var(--font-mono); font-feature-settings: "tnum"; white-space: nowrap; color: var(--fg); font-weight: 500; }
+
+      .prod { display: flex; align-items: center; gap: 12px; min-width: 0; }
+      .prod .thumb {
+        flex: none;
+        width: 44px; height: 44px;
+        border-radius: 6px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        background: var(--surface-warm);
+      }
+      .prod .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .prod .pname { display: block; font-weight: 500; color: var(--fg); line-height: 1.3; }
+      .prod .pid { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+      .buyer b { display: block; font-weight: 500; color: var(--fg); line-height: 1.3; }
+      .buyer .loc { display: block; font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+      .price-cell { font-family: var(--font-mono); font-feature-settings: "tnum"; white-space: nowrap; font-weight: 500; color: var(--fg); }
+      .paid { font-family: var(--font-mono); font-feature-settings: "tnum"; white-space: nowrap; color: var(--fg-2); }
+
+      /* Hạn giao: status cell */
+      .han { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-feature-settings: "tnum"; white-space: nowrap; color: var(--gray-text); }
+      .han.overdue { color: var(--danger-text); font-weight: 600; }
+      .han svg { flex: none; width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+      .han .carrier { color: var(--fg-2); }
+
+      /* Overdue row: subtle red left accent, not a full background */
+      .row-overdue td { border-left: 2px solid var(--danger); }
+
+      .row-actions { display: flex; gap: 14px; align-items: center; white-space: nowrap; }
+      .row-actions .act-primary { font-size: 13px; font-weight: 600; color: var(--accent); }
+      .row-actions .act-primary:hover { color: var(--accent-active); text-decoration: underline; }
+      .row-actions .act-plain { font-size: 13px; font-weight: 500; color: var(--muted); }
+      .row-actions .act-plain:hover { color: var(--fg); text-decoration: underline; }
+
+      /* Specific empty state per tab */
+      .empty-panel { padding: 48px 24px; text-align: center; }
+      .empty-panel .empty-ico {
+        width: 40px; height: 40px;
+        margin: 0 auto 14px;
+        border-radius: 10px;
+        background: var(--surface-warm);
+        border: 1px solid var(--border);
+        color: var(--muted);
+        display: grid;
+        place-items: center;
+      }
+      .empty-panel .empty-ico svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+      .empty-panel h3 { margin: 0 0 4px; font-size: var(--text-base); font-weight: 600; letter-spacing: var(--tracking-display); color: var(--fg); }
+      .empty-panel p { margin: 0; color: var(--muted); font-size: var(--text-sm); }
+
+      /* Toast */
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        transform: translate(-50%, 16px);
+        background: var(--dark-bg);
+        color: #fff;
+        font-size: var(--text-sm);
+        padding: 11px 18px;
+        border-radius: 8px;
+        box-shadow: var(--elev-soft);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--motion-base) var(--ease-standard), transform var(--motion-base) var(--ease-standard);
+        z-index: 60;
+        max-width: min(90vw, 560px);
+      }
+      .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+      /* Drawer */
+      .scrim {
+        position: fixed;
+        inset: 0;
+        background: rgba(17, 17, 19, 0.4);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity var(--motion-base) var(--ease-standard), visibility var(--motion-base) var(--ease-standard);
+        z-index: 50;
+      }
+      .scrim.show { opacity: 1; visibility: visible; }
+
+      .drawer {
+        position: fixed;
+        top: 0; right: 0; bottom: 0;
+        width: min(440px, 100vw);
+        background: #fff;
+        border-left: 1px solid var(--border);
+        box-shadow: var(--elev-soft);
+        transform: translateX(100%);
+        transition: transform var(--motion-base) var(--ease-standard);
+        z-index: 55;
+        display: flex;
+        flex-direction: column;
+      }
+      .drawer.show { transform: translateX(0); }
+      .drawer-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 20px 24px 12px;
+      }
+      .drawer-head h2 { margin: 0; font-size: var(--text-lg); font-weight: 600; }
+      .drawer-close {
+        margin-left: auto;
+        border: 0;
+        background: transparent;
+        width: 36px; height: 36px;
+        border-radius: 6px;
+        cursor: pointer;
+        color: var(--muted);
+        display: grid;
+        place-items: center;
+        font-size: 20px;
+        line-height: 1;
+      }
+      .drawer-close:hover { background: var(--surface-warm); color: var(--fg); }
+      .drawer-body { padding: 12px 24px 24px; overflow-y: auto; flex: 1; }
+
+      .drawer-sub { margin: 2px 0 14px; color: var(--muted); font-size: 13px; }
+      .drawer-sub .od-id { font-size: 13px; }
+
+      .field { margin-bottom: 18px; }
+      .field label { display: block; font-size: 13px; font-weight: 500; color: var(--fg-2); margin-bottom: 6px; }
+      .field .req { color: var(--danger-text); }
+      .field input, .field select, .field textarea {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: #fff;
+        color: var(--fg);
+        font-family: inherit;
+        font-size: var(--text-sm);
+        padding: 10px 12px;
+        transition: border-color var(--motion-fast) var(--ease-standard), box-shadow var(--motion-fast) var(--ease-standard);
+      }
+      .field textarea { resize: vertical; min-height: 76px; }
+      .field input:hover, .field select:hover, .field textarea:hover { border-color: #d1d5db; }
+      .field input:focus-visible, .field select:focus-visible, .field textarea:focus-visible { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+      .field .error { color: var(--danger-text); font-size: 12px; margin-top: 5px; min-height: 0; }
+      .field .help { color: var(--muted); font-size: 12px; margin-top: 5px; }
+
+      .drawer-foot {
+        padding: 16px 24px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+      }
+
+      /* ─── Responsive ─────────────────────────────────────────── */
+      @media (max-width: 1024px) {
+        .app { flex-direction: column; }
+        .sidebar {
+          width: 100%;
+          height: auto;
+          position: static;
+          border-right: 0;
+          border-bottom: 1px solid var(--border);
+        }
+        .side-brand { padding: 14px 20px 10px; }
+        .side-nav {
+          flex-direction: row;
+          overflow-x: auto;
+          padding: 6px 12px 12px;
+          scrollbar-width: none;
+        }
+        .side-nav::-webkit-scrollbar { display: none; }
+        .side-nav a { flex: none; }
+        .side-nav a .count { display: none; }
+        .side-user { border-top: 0; padding: 10px 20px 14px; }
+        .content { padding-inline: 20px; }
+      }
+
+      @media (max-width: 640px) {
+        .page-head { flex-direction: column; }
+        .head-actions { margin-left: 0; width: 100%; }
+        .head-actions .btn, .head-actions .range-picker { width: 100%; }
+        .head-actions select { width: 100%; }
+        .tbl thead th, .tbl tbody td { padding-inline: 12px; }
+      }
+    </style>
+  
+
+    <!-- OD MICRO-INTERACTIONS START -->
+    <style data-micro-interactions="css">
+      /* Cross-page micro-interactions: focus ring, link slide underline,
+         button press, lazy image fade, dialog rise, scroll progress. */
+
+      :focus-visible {
+        outline: 2px solid var(--accent, #635bff);
+        outline-offset: 4px;
+        transition: outline-color 120ms ease;
+      }
+
+      /* Unify link underline into one animated system. !important suppresses
+         per-page text-decoration so only the slide underline renders; the
+         element-level background-image only affects painting, never layout. */
+      a {
+        text-decoration: none !important;
+        background-image: linear-gradient(currentColor, currentColor);
+        background-repeat: no-repeat;
+        background-position: 0 100%;
+        background-size: 0 1px;
+        background-origin: border-box;
+        transition:
+          background-size 150ms cubic-bezier(0.2, 0, 0, 1),
+          color 150ms ease,
+          background-color 150ms ease,
+          border-color 150ms ease,
+          opacity 150ms ease,
+          transform 150ms ease;
+      }
+      a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover {
+        background-size: 100% 1px;
+      }
+
+      button:not(.pwd-toggle):active,
+      .btn:active,
+      [role="button"]:active {
+        transform: scale(0.98);
+      }
+
+      @keyframes micro-rise {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      [role="dialog"] > *,
+      .drawer-inner > *,
+      .drawer-panel > * {
+        animation: micro-rise 260ms cubic-bezier(0.2, 0, 0, 1) both;
+      }
+      [role="dialog"] > * + *,
+      .drawer-inner > * + *,
+      .drawer-panel > * + * {
+        animation-delay: 50ms;
+      }
+
+      img[loading="lazy"] {
+        opacity: 0.8;
+        transition: opacity 260ms ease;
+      }
+      img[loading="lazy"].micro-loaded { opacity: 1; }
+
+      #scroll-progress {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%;
+        height: 2px;
+        transform: scaleX(var(--micro-prog, 0));
+        transform-origin: left center;
+        background: var(--accent, #635bff);
+        z-index: 1000;
+        pointer-events: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        a { background-image: none; }
+        a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover { background-size: 0 1px; }
+        button:not(.pwd-toggle):active,
+        .btn:active,
+        [role="button"]:active { transform: none; }
+        [role="dialog"] > *,
+        .drawer-inner > *,
+        .drawer-panel > * { animation: none; }
+        img[loading="lazy"] { opacity: 1; transition: none; }
+        #scroll-progress { transform: none; }
+      }
+    </style>
+    <!-- /OD MICRO-INTERACTIONS -->
+
+  </head>
+
+  <body>
+    <div class="app">
+      <!-- ─── Sidebar ─────────────────────────────────────────────── -->
+      <aside class="sidebar" aria-label="Điều hướng người bán">
+        <a class="side-brand" href="index.html">
+          <span class="mark" aria-hidden="true">A</span>
+          AuctionHub
+        </a>
+
+        <nav class="side-nav" aria-label="Menu chính">
+          <a href="dashboard.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+            Tổng quan
+          </a>
+          <a href="auction-detail.html">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8H4.5a1.5 1.5 0 0 0-1.1 2.55L12 19l5-5-9-6Z"/><path d="m12 19 2.9 2.9a1.5 1.5 0 0 0 2.12 0l1.4-1.4a1.5 1.5 0 0 0 0-2.12L15 15"/><path d="M14.5 5.5c-1.5 1-2.5 2.5-2.5 4s1 3.5 2 4.5c2 2 5 1 5 1s1.5-3 0-5c-.9-.9-2-1.5-3-2"/></svg>
+            Phiên đấu giá
+            <span class="count">8</span>
+          </a>
+          <a href="seller-orders.html" aria-current="page">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8Z"/><path d="M3 8V6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2"/><path d="M10 12h4"/></svg>
+            Đơn hàng
+            <span class="count" id="nav-order-count">3</span>
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l4-4 4 4 3-3a4 4 0 0 0 3-1L21 9"/><path d="M21 9v4"/><path d="M21 9h-4"/></svg>
+            Doanh thu
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9L12 3Z"/></svg>
+            Đánh giá
+            <span class="count">1</span>
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.02a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.02a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+            Cài đặt
+          </a>
+        </nav>
+
+        <div class="side-user">
+          <span class="avatar" aria-hidden="true">TV</span>
+          <div class="usermeta">
+            <b>TechStore VN</b>
+            <span class="badge">Seller</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ─── Main ─────────────────────────────────────────────────── -->
+      <main class="main">
+        <div class="content">
+          <div class="page-head">
+            <div>
+              <h1>Đơn hàng</h1>
+              <p class="sub" id="head-sub">3 đơn chờ giao, 2 đơn đang vận chuyển, 7 đơn hoàn thành tháng này.</p>
+            </div>
+            <div class="head-actions">
+              <div class="range-picker">
+                <label for="range-select" class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Khoảng thời gian</label>
+                <select id="range-select">
+                  <option value="7 ngày qua">7 ngày qua</option>
+                  <option value="30 ngày qua" selected>30 ngày qua</option>
+                  <option value="90 ngày qua">90 ngày qua</option>
+                </select>
+              </div>
+              <button type="button" class="btn btn-ghost" id="btn-csv">Xuất CSV</button>
+            </div>
+          </div>
+
+          <!-- Nav tabs (underline) -->
+          <div class="tabs" role="tablist" aria-label="Trạng thái đơn hàng">
+            <button type="button" role="tab" id="tab-pending" aria-selected="true" aria-controls="panel-pending" data-panel="pending">Chờ giao<span class="tcount" id="tc-pending">3</span></button>
+            <button type="button" role="tab" id="tab-shipping" aria-selected="false" aria-controls="panel-shipping" data-panel="shipping">Đang giao<span class="tcount" id="tc-shipping">2</span></button>
+            <button type="button" role="tab" id="tab-delivered" aria-selected="false" aria-controls="panel-delivered" data-panel="delivered">Đã giao<span class="tcount" id="tc-delivered">7</span></button>
+            <button type="button" role="tab" id="tab-cancelled" aria-selected="false" aria-controls="panel-cancelled" data-panel="cancelled">Đã hủy<span class="tcount" id="tc-cancelled">0</span></button>
+            <button type="button" role="tab" id="tab-refunded" aria-selected="false" aria-controls="panel-refunded" data-panel="refunded">Hoàn tiền<span class="tcount" id="tc-refunded">1</span></button>
+          </div>
+
+          <p class="order-note" id="tab-note"></p>
+
+          <div class="card">
+            <!-- Chờ giao -->
+            <section class="tab-panel" id="panel-pending" role="tabpanel" aria-labelledby="tab-pending">
+              <div class="tbl-scroll">
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th scope="col">Mã đơn</th>
+                      <th scope="col">Sản phẩm</th>
+                      <th scope="col">Người mua</th>
+                      <th scope="col">Số tiền</th>
+                      <th scope="col">Ngày thanh toán</th>
+                      <th scope="col">Hạn giao</th>
+                      <th scope="col">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbody-pending">
+                    <tr data-oid="#ORD-142" data-img="images/laptop.jpg" data-product="MacBook Pro 14 M3 2023" data-au="#AU-1042" data-buyer="Nguyễn Văn A" data-loc="Hà Nội" data-price="36.500.000đ" data-paid="19/09 15:12">
+                      <td><span class="od-id">#ORD-142</span></td>
+                      <td>
+                        <div class="prod">
+                          <span class="thumb"><img src="images/laptop.jpg" alt="" /></span>
+                          <span class="pmeta">
+                            <span class="pname">MacBook Pro 14 M3 2023</span>
+                            <span class="pid">#AU-1042 · Đã thanh toán</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td><div class="buyer"><b>Nguyễn Văn A</b><span class="loc">Hà Nội</span></div></td>
+                      <td><span class="price-cell">36.500.000đ</span></td>
+                      <td><span class="paid">19/09 15:12</span></td>
+                      <td><span class="han">Còn 18h</span></td>
+                      <td>
+                        <div class="row-actions">
+                          <a href="#" class="act-plain" data-contact="#ORD-142">Liên hệ</a>
+                          <a href="#" class="act-primary" data-ship="#ORD-142">Đánh dấu đã gửi</a>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr data-oid="#ORD-141" data-img="images/phone.jpg" data-product="iPhone 15 Pro Max 256GB" data-au="#AU-1058" data-buyer="Trần Thị B" data-loc="TP.HCM" data-price="24.800.000đ" data-paid="19/09 09:40">
+                      <td><span class="od-id">#ORD-141</span></td>
+                      <td>
+                        <div class="prod">
+                          <span class="thumb"><img src="images/phone.jpg" alt="" /></span>
+                          <span class="pmeta">
+                            <span class="pname">iPhone 15 Pro Max 256GB</span>
+                            <span class="pid">#AU-1058 · Đã thanh toán</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td><div class="buyer"><b>Trần Thị B</b><span class="loc">TP.HCM</span></div></td>
+                      <td><span class="price-cell">24.800.000đ</span></td>
+                      <td><span class="paid">19/09 09:40</span></td>
+                      <td><span class="han">Còn 2 ngày</span></td>
+                      <td>
+                        <div class="row-actions">
+                          <a href="#" class="act-plain" data-contact="#ORD-141">Liên hệ</a>
+                          <a href="#" class="act-primary" data-ship="#ORD-141">Đánh dấu đã gửi</a>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr class="row-overdue" data-oid="#ORD-140" data-img="images/tablet.jpg" data-product="iPad Pro 11 M4 256GB" data-au="#AU-1066" data-buyer="Phạm Quốc C" data-loc="Đà Nẵng" data-price="21.500.000đ" data-paid="18/09 22:15">
+                      <td><span class="od-id">#ORD-140</span></td>
+                      <td>
+                        <div class="prod">
+                          <span class="thumb"><img src="images/tablet.jpg" alt="" /></span>
+                          <span class="pmeta">
+                            <span class="pname">iPad Pro 11 M4 256GB</span>
+                            <span class="pid">#AU-1066 · Đã thanh toán</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td><div class="buyer"><b>Phạm Quốc C</b><span class="loc">Đà Nẵng</span></div></td>
+                      <td><span class="price-cell">21.500.000đ</span></td>
+                      <td><span class="paid">18/09 22:15</span></td>
+                      <td>
+                        <span class="han overdue">
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                          Trễ 6h
+                        </span>
+                      </td>
+                      <td>
+                        <div class="row-actions">
+                          <a href="#" class="act-plain" data-contact="#ORD-140">Liên hệ</a>
+                          <a href="#" class="act-primary" data-ship="#ORD-140">Đánh dấu đã gửi</a>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="empty-panel" hidden data-empty-for="pending">
+                <div class="empty-ico">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8Z"/><path d="M3 8V6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2"/><path d="M10 12h4"/></svg>
+                </div>
+                <h3>Không còn đơn chờ giao</h3>
+                <p>Mọi đơn đã được xác nhận gửi. Đơn mới sẽ xuất hiện tại tab này.</p>
+              </div>
+            </section>
+
+            <!-- Đang giao -->
+            <section class="tab-panel" id="panel-shipping" role="tabpanel" aria-labelledby="tab-shipping" hidden>
+              <div class="tbl-scroll">
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th scope="col">Mã đơn</th>
+                      <th scope="col">Sản phẩm</th>
+                      <th scope="col">Người mua</th>
+                      <th scope="col">Số tiền</th>
+                      <th scope="col">Ngày thanh toán</th>
+                      <th scope="col">Hạn giao</th>
+                      <th scope="col">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbody-shipping">
+                    <tr data-oid="#ORD-139" data-product="MacBook Pro 14 M3 Pro 2024" data-au="#AU-1050" data-buyer="Lê Minh Tâm" data-loc="Hà Nội" data-price="42.900.000đ" data-paid="18/09 10:05" data-carrier="GHN" data-track="VN93211847">
+                      <td><span class="od-id">#ORD-139</span></td>
+                      <td>
+                        <div class="prod">
+                          <span class="thumb"><img src="images/mbp-angle.jpg" alt="" /></span>
+                          <span class="pmeta">
+                            <span class="pname">MacBook Pro 14 M3 Pro 2024</span>
+                            <span class="pid">#AU-1050 · GHN</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td><div class="buyer"><b>Lê Minh Tâm</b><span class="loc">Hà Nội</span></div></td>
+                      <td><span class="price-cell">42.900.000đ</span></td>
+                      <td><span class="paid">18/09 10:05</span></td>
+                      <td><span class="han"><span class="carrier">GHN</span> · dự kiến 20/09</span></td>
+                      <td>
+                        <div class="row-actions">
+                          <a href="#" class="act-plain" data-track="#ORD-139">Theo dõi</a>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr data-oid="#ORD-138" data-product="AirPods Max 2024" data-au="#AU-1061" data-buyer="Hoàng Thu Hà" data-loc="TP.HCM" data-price="10.900.000đ" data-paid="17/09 18:40" data-carrier="Viettel Post" data-track="VTT1902145">
+                      <td><span class="od-id">#ORD-138</span></td>
+                      <td>
+                        <div class="prod">
+                          <span class="thumb"><img src="images/headphones.jpg" alt="" /></span>
+                          <span class="pmeta">
+                            <span class="pname">AirPods Max 2024</span>
+                            <span class="pid">#AU-1061 · Viettel Post</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td><div class="buyer"><b>Hoàng Thu Hà</b><span class="loc">TP.HCM</span></div></td>
+                      <td><span class="price-cell">10.900.000đ</span></td>
+                      <td><span class="paid">17/09 18:40</span></td>
+                      <td><span class="han"><span class="carrier">Viettel Post</span> · dự kiến 19/09</span></td>
+                      <td>
+                        <div class="row-actions">
+                          <a href="#" class="act-plain" data-track="#ORD-138">Theo dõi</a>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="empty-panel" hidden data-empty-for="shipping">
+                <div class="empty-ico">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8Z"/><path d="M3 8V6a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2"/><path d="M10 12h4"/></svg>
+                </div>
+                <h3>Không có đơn đang vận chuyển</h3>
+                <p>Các đơn bạn xác nhận gửi sẽ hiển thị tại đây kèm mã vận đơn.</p>
+              </div>
+            </section>
+
+            <!-- Đã giao -->
+            <section class="tab-panel" id="panel-delivered" role="tabpanel" aria-labelledby="tab-delivered" hidden>
+              <div class="tbl-scroll">
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th scope="col">Mã đơn</th>
+                      <th scope="col">Sản phẩm</th>
+                      <th scope="col">Người mua</th>
+                      <th scope="col">Số tiền</th>
+                      <th scope="col">Ngày thanh toán</th>
+                      <th scope="col">Hạn giao</th>
+                      <th scope="col">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><span class="od-id">#ORD-137</span></td>
+                      <td>
+                        <div class="prod">
+                          <span class="thumb"><img src="images/laptop.jpg" alt="" /></span>
+                          <span class="pmeta">
+                            <span class="pname">MacBook Pro 14 M3 2023</span>
+                            <span class="pid">#AU-1042 · GHN</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td><div class="buyer"><b>Nguyễn Văn A</b><span class="loc">Hà Nội</span></div></td>
+                      <td><span class="price-cell">35.500.000đ</span></td>
+                      <td><span class="paid">16/09 20:12</span></td>
+                      <td><span class="han"><span class="carrier">Đã giao 17/09</span> · 14:20</span></td>
+                      <td><div class="row-actions"><a href="#" class="act-plain" data-track="#ORD-137">Xem vận đơn</a></div></td>
+                    </tr>
+                    <tr>
+                      <td><span class="od-id">#ORD-136</span></td>
+                      <td>
+                        <div class="prod">
+                          <span class="thumb"><img src="images/phone.jpg" alt="" /></span>
+                          <span class="pmeta">
+                            <span class="pname">iPhone 15 Pro 128GB</span>
+                            <span class="pid">#AU-1053 · GHN</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td><div class="buyer"><b>Phạm Quốc C</b><span class="loc">Đà Nẵng</span></div></td>
+                      <td><span class="price-cell">20.800.000đ</span></td>
+                      <td><span class="paid">15/09 16:30</span></td>
+                      <td><span class="han"><span class="carrier">Đã giao 16/09</span> · 10:05</span></td>
+                      <td><div class="row-actions"><a href="#" class="act-plain" data-track="#ORD-136">Xem vận đơn</a></div></td>
+                    </tr>
+                    <tr>
+                      <td><span class="od-id">#ORD-135</span></td>
+                      <td>
+                        <div class="prod">
+                          <span class="thumb"><img src="images/mbp-angle.jpg" alt="" /></span>
+                          <span class="pmeta">
+                            <span class="pname">MacBook Pro 14 M3 Pro 2024</span>
+                            <span class="pid">#AU-1050 · Viettel Post</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td><div class="buyer"><b>Hoàng Thu Hà</b><span class="loc">TP.HCM</span></div></td>
+                      <td><span class="price-cell">42.900.000đ</span></td>
+                      <td><span class="paid">14/09 11:22</span></td>
+                      <td><span class="han"><span class="carrier">Đã giao 15/09</span> · 09:50</span></td>
+                      <td><div class="row-actions"><a href="#" class="act-plain" data-track="#ORD-135">Xem vận đơn</a></div></td>
+                    </tr>
+                    <tr>
+                      <td><span class="od-id">#ORD-134</span></td>
+                      <td>
+                        <div class="prod">
+                          <span class="thumb"><img src="images/headphones.jpg" alt="" /></span>
+                          <span class="pmeta">
+                            <span class="pname">AirPods Pro 2</span>
+                            <span class="pid">#AU-1055 · GHN</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td><div class="buyer"><b>Lê Minh Tâm</b><span class="loc">Hà Nội</span></div></td>
+                      <td><span class="price-cell">5.900.000đ</span></td>
+                      <td><span class="paid">12/09 09:15</span></td>
+                      <td><span class="han"><span class="carrier">Đã giao 13/09</span> · 17:20</span></td>
+                      <td><div class="row-actions"><a href="#" class="act-plain" data-track="#ORD-134">Xem vận đơn</a></div></td>
+                    </tr>
+                    <tr>
+                      <td><span class="od-id">#ORD-133</span></td>
+                      <td>
+                        <div class="prod">
+                          <span class="thumb"><img src="images/tablet.jpg" alt="" /></span>
+                          <span class="pmeta">
+                            <span class="pname">iPad Pro 11 M4 256GB</span>
+                            <span class="pid">#AU-1066 · GHN</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td><div class="buyer"><b>Nguyễn Văn A</b><span class="loc">Hà Nội</span></div></td>
+                      <td><span class="price-cell">21.500.000đ</span></td>
+                      <td><span class="paid">10/09 20:48</span></td>
+                      <td><span class="han"><span class="carrier">Đã giao 12/09</span> · 11:30</span></td>
+                      <td><div class="row-actions"><a href="#" class="act-plain" data-track="#ORD-133">Xem vận đơn</a></div></td>
+                    </tr>
+                    <tr>
+                      <td><span class="od-id">#ORD-132</span></td>
+                      <td>
+                        <div class="prod">
+                          <span class="thumb"><img src="images/laptop.jpg" alt="" /></span>
+                          <span class="pmeta">
+                            <span class="pname">MacBook Pro 14 M3 2023</span>
+                            <span class="pid">#AU-1041 · Viettel Post</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td><div class="buyer"><b>Trần Thị B</b><span class="loc">TP.HCM</span></div></td>
+                      <td><span class="price-cell">36.500.000đ</span></td>
+                      <td><span class="paid">09/09 14:05</span></td>
+                      <td><span class="han"><span class="carrier">Đã giao 10/09</span> · 16:40</span></td>
+                      <td><div class="row-actions"><a href="#" class="act-plain" data-track="#ORD-132">Xem vận đơn</a></div></td>
+                    </tr>
+                    <tr>
+                      <td><span class="od-id">#ORD-131</span></td>
+                      <td>
+                        <div class="prod">
+                          <span class="thumb"><img src="images/phone.jpg" alt="" /></span>
+                          <span class="pmeta">
+                            <span class="pname">iPhone 14 Pro Max 256GB</span>
+                            <span class="pid">#AU-1048 · GHN</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td><div class="buyer"><b>Phạm Quốc C</b><span class="loc">Đà Nẵng</span></div></td>
+                      <td><span class="price-cell">23.900.000đ</span></td>
+                      <td><span class="paid">07/09 10:33</span></td>
+                      <td><span class="han"><span class="carrier">Đã giao 08/09</span> · 12:15</span></td>
+                      <td><div class="row-actions"><a href="#" class="act-plain" data-track="#ORD-131">Xem vận đơn</a></div></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="empty-panel" hidden data-empty-for="delivered">
+                <div class="empty-ico">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3h16v18H4z"/><path d="m8 13 3 3 5-6"/></svg>
+                </div>
+                <h3>Chưa có đơn giao xong</h3>
+                <p>Đơn giao thành công và được người mua nhận sẽ hiển thị tại đây.</p>
+              </div>
+            </section>
+
+            <!-- Đã hủy -->
+            <section class="tab-panel" id="panel-cancelled" role="tabpanel" aria-labelledby="tab-cancelled" hidden>
+              <div class="tbl-scroll" hidden></div>
+              <div class="empty-panel" data-empty-for="cancelled">
+                <div class="empty-ico">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8.5 8.5 7 7"/><path d="m15.5 8.5-7 7"/></svg>
+                </div>
+                <h3>Không có đơn hủy</h3>
+                <p>Khách hàng của bạn đang giữ tỷ lệ hủy ở mức 0%.</p>
+              </div>
+            </section>
+
+            <!-- Hoàn tiền -->
+            <section class="tab-panel" id="panel-refunded" role="tabpanel" aria-labelledby="tab-refunded" hidden>
+              <div class="tbl-scroll">
+                <table class="tbl">
+                  <thead>
+                    <tr>
+                      <th scope="col">Mã đơn</th>
+                      <th scope="col">Sản phẩm</th>
+                      <th scope="col">Người mua</th>
+                      <th scope="col">Số tiền</th>
+                      <th scope="col">Ngày thanh toán</th>
+                      <th scope="col">Hạn giao</th>
+                      <th scope="col">Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><span class="od-id">#ORD-128</span></td>
+                      <td>
+                        <div class="prod">
+                          <span class="thumb"><img src="images/mbp-side.jpg" alt="" /></span>
+                          <span class="pmeta">
+                            <span class="pname">MacBook Pro 14 M3 Pro 2024</span>
+                            <span class="pid">#AU-1049 · Hoàn tiền Momo</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td><div class="buyer"><b>Trần Thị B</b><span class="loc">TP.HCM</span></div></td>
+                      <td><span class="price-cell">42.900.000đ</span></td>
+                      <td><span class="paid">06/09 15:12</span></td>
+                      <td><span class="han"><span class="carrier">Đã hoàn 08/09</span> · 09:30</span></td>
+                      <td><div class="row-actions"><a href="#" class="act-plain" data-track="#ORD-128">Xem chi tiết</a></div></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="empty-panel" hidden data-empty-for="refunded">
+                <div class="empty-ico">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19h16"/><path d="M4 5h16"/><circle cx="12" cy="12" r="3"/></svg>
+                </div>
+                <h3>Chưa có khoản hoàn tiền</h3>
+                <p>Hoàn tiền cho người mua sẽ xuất hiện tại đây kèm trạng thái xử lý.</p>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <!-- Drawer: đánh dấu đã gửi -->
+    <div class="scrim" id="scrim"></div>
+    <aside class="drawer" id="drawer" aria-hidden="true" aria-labelledby="drawer-title">
+      <div class="drawer-head">
+        <h2 id="drawer-title">Đánh dấu đã gửi</h2>
+        <button type="button" class="drawer-close" id="btn-close-drawer" aria-label="Đóng">×</button>
+      </div>
+      <div class="drawer-body">
+        <p class="drawer-sub" id="drawer-sub"></p>
+        <form id="ship-form" novalidate>
+          <div class="field">
+            <label for="f-carrier">Nhà vận chuyển <span class="req">*</span></label>
+            <select id="f-carrier" name="carrier">
+              <option value="GHN">GHN (Giao Hàng Nhanh)</option>
+              <option value="Viettel Post">Viettel Post</option>
+              <option value="GHTK">GHTK</option>
+              <option value="Khác">Khác</option>
+            </select>
+            <p class="error" id="err-carrier"></p>
+          </div>
+          <div class="field">
+            <label for="f-track">Mã vận đơn <span class="req">*</span></label>
+            <input type="text" id="f-track" name="track" autocomplete="off" placeholder="Ví dụ: VN93211847" />
+            <p class="error" id="err-track"></p>
+          </div>
+          <div class="field">
+            <label for="f-note">Ghi chú cho người mua</label>
+            <textarea id="f-note" name="note" rows="3" placeholder="Tùy chọn. Hiển thị trong thông báo kèm mã vận đơn."></textarea>
+            <p class="help">Chỉ người mua của đơn này nhìn thấy ghi chú.</p>
+          </div>
+        </form>
+      </div>
+      <div class="drawer-foot">
+        <button type="button" class="btn btn-ghost" id="btn-cancel">Hủy</button>
+        <button type="button" class="btn btn-primary" id="btn-submit">Xác nhận gửi hàng</button>
+      </div>
+    </aside>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var $ = function (id) { return document.getElementById(id); };
+        var toastEl = $("toast");
+        var toastTimer = null;
+        function showToast(msg) {
+          toastEl.textContent = msg;
+          toastEl.classList.add("show");
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(function () {
+            toastEl.classList.remove("show");
+          }, 2600);
+        }
+        function escHtml(s) {
+          return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+
+        /* ── Tabs ── */
+        var tabs = Array.prototype.slice.call(document.querySelectorAll(".tabs [role='tab']"));
+        var panels = Array.prototype.slice.call(document.querySelectorAll(".tab-panel"));
+
+        var TAB_LABELS = {
+          pending: "đơn chờ giao",
+          shipping: "đơn đang vận chuyển",
+          delivered: "đơn đã giao",
+          cancelled: "đơn đã hủy",
+          refunded: "đơn hoàn tiền"
+        };
+
+        function countRows(key) {
+          return document.getElementById("tbody-" + key).rows.length;
+        }
+
+        function syncCounts() {
+          var counts = {};
+          ["pending", "shipping", "delivered", "cancelled", "refunded"].forEach(function (k) {
+            counts[k] = countRows(k);
+            $("tc-" + k).textContent = counts[k];
+          });
+          $("nav-order-count").textContent = counts.pending;
+
+          var key = currentTab;
+          var emptied = panels.filter(function (p) {
+            return p.id === "panel-" + key;
+          })[0];
+          var body = emptied.querySelector("tbody");
+          if (body) {
+            var tblWrap = emptied.querySelector(".tbl-scroll");
+            var emptyBox = emptied.querySelector('[data-empty-for="' + key + '"]');
+            var empty = body.rows.length === 0;
+            if (tblWrap) { tblWrap.hidden = empty; }
+            if (emptyBox) { emptyBox.hidden = !empty; }
+          }
+
+          $("head-sub").textContent =
+            counts.pending + " đơn chờ giao, " + counts.shipping +
+            " đơn đang vận chuyển, " + counts.delivered +
+            " đơn hoàn thành tháng này.";
+        }
+
+        var currentTab = "pending";
+        var rangeLabel = "30 ngày qua";
+
+        function setNote() {
+          var n = countRows(currentTab);
+          var label = TAB_LABELS[currentTab];
+          $("tab-note").textContent =
+            "Hiển thị " + n + " " + label + " trong " + rangeLabel + ".";
+        }
+
+        function activate(name) {
+          currentTab = name;
+          tabs.forEach(function (t) {
+            var on = t.getAttribute("data-panel") === name;
+            t.setAttribute("aria-selected", String(on));
+            if (on) { t.setAttribute("tabindex", "0"); } else { t.setAttribute("tabindex", "-1"); }
+          });
+          panels.forEach(function (p) {
+            p.hidden = p.id !== "panel-" + name;
+          });
+          syncCounts();
+          setNote();
+        }
+
+        tabs.forEach(function (t) {
+          t.addEventListener("click", function () {
+            activate(t.getAttribute("data-panel"));
+          });
+        });
+
+        /* ── Range picker ── */
+        var rangeSelect = $("range-select");
+        rangeSelect.addEventListener("change", function () {
+          rangeLabel = rangeSelect.value;
+          setNote();
+          showToast("Đang lọc đơn hàng trong " + rangeLabel + ".");
+        });
+
+        /* ── Export CSV ── */
+        $("btn-csv").addEventListener("click", function () {
+          showToast("Đang tạo CSV của " + countRows(currentTab) + " đơn trong " + rangeLabel + ".");
+        });
+
+        /* ── Plain actions (contact / tracking) ── */
+        document.addEventListener("click", function (e) {
+          var a = e.target.closest("a[data-contact]");
+          if (a) {
+            e.preventDefault();
+            showToast("Đã gửi yêu cầu liên hệ người mua " + a.getAttribute("data-contact") + ". Người mua sẽ nhận tin nhắn trong app.");
+            return;
+          }
+          var t = e.target.closest("a[data-track]");
+          if (t) {
+            e.preventDefault();
+            showToast("Mở vận đơn " + t.getAttribute("data-track") + " trên trang nhà vận chuyển (bản demo).");
+          }
+        });
+
+        /* ── Ship drawer ── */
+        var drawer = $("drawer");
+        var scrim = $("scrim");
+        var btnClose = $("btn-close-drawer");
+        var btnCancel = $("btn-cancel");
+        var btnSubmit = $("btn-submit");
+        var form = $("ship-form");
+        var fCarrier = $("f-carrier");
+        var fTrack = $("f-track");
+        var fNote = $("f-note");
+        var errCarrier = $("err-carrier");
+        var errTrack = $("err-track");
+        var currentRow = null;
+
+        function clearErrors() {
+          errCarrier.textContent = "";
+          errTrack.textContent = "";
+        }
+
+        document.addEventListener("click", function (e) {
+          var s = e.target.closest("a[data-ship]");
+          if (!s) return;
+          e.preventDefault();
+          var oid = s.getAttribute("data-ship");
+          currentRow = s.closest("tr");
+          $("drawer-sub").innerHTML = "Đơn " + '<span class="od-id">' + oid + "</span>" +
+            " · " + escHtml(currentRow.getAttribute("data-buyer")) +
+            " · " + escHtml(currentRow.getAttribute("data-product"));
+          clearErrors();
+          form.reset();
+          drawer.classList.add("show");
+          scrim.classList.add("show");
+          drawer.setAttribute("aria-hidden", "false");
+          setTimeout(function () { fCarrier.focus(); }, 80);
+        });
+
+        function closeDrawer() {
+          drawer.classList.remove("show");
+          scrim.classList.remove("show");
+          drawer.setAttribute("aria-hidden", "true");
+        }
+        btnClose.addEventListener("click", closeDrawer);
+        btnCancel.addEventListener("click", closeDrawer);
+        scrim.addEventListener("click", closeDrawer);
+
+        btnSubmit.addEventListener("click", function () {
+          clearErrors();
+          var ok = true;
+
+          var carrier = fCarrier.value;
+          if (!carrier) {
+            errCarrier.textContent = "Vui lòng chọn nhà vận chuyển.";
+            ok = false;
+          }
+
+          var track = fTrack.value.trim();
+          if (!track) {
+            errTrack.textContent = "Vui lòng nhập mã vận đơn.";
+            ok = false;
+          } else if (track.length < 5) {
+            errTrack.textContent = "Mã vận đơn cần ít nhất 5 ký tự.";
+            ok = false;
+          }
+
+          if (!ok) return;
+
+          if (!currentRow) {
+            closeDrawer();
+            return;
+          }
+
+          var oid = currentRow.getAttribute("data-oid");
+          var note = fNote.value.trim();
+
+          var tr = document.createElement("tr");
+          var buyer = currentRow.getAttribute("data-buyer");
+          var loc = currentRow.getAttribute("data-loc");
+          var price = currentRow.getAttribute("data-price");
+          var paid = currentRow.getAttribute("data-paid");
+          tr.setAttribute("data-oid", oid);
+          tr.setAttribute("data-product", currentRow.getAttribute("data-product"));
+          tr.setAttribute("data-au", currentRow.getAttribute("data-au"));
+          tr.setAttribute("data-buyer", buyer);
+          tr.setAttribute("data-loc", loc);
+          tr.setAttribute("data-price", price);
+          tr.setAttribute("data-paid", paid);
+          tr.setAttribute("data-carrier", carrier);
+          tr.setAttribute("data-track", track);
+          tr.innerHTML =
+            '<td><span class="od-id">' + oid + "</span></td>" +
+            '<td><div class="prod"><span class="thumb"><img src="' + currentRow.getAttribute("data-img") + '" alt="" /></span>' +
+            '<span class="pmeta"><span class="pname">' + escHtml(currentRow.getAttribute("data-product")) + "</span>" +
+            '<span class="pid">' + escHtml(currentRow.getAttribute("data-au")) + " · " + escHtml(carrier) + "</span></span></div></td>" +
+            '<td><div class="buyer"><b>' + escHtml(buyer) + "</b><span class=\"loc\">" + escHtml(loc) + "</span></div></td>" +
+            '<td><span class="price-cell">' + escHtml(price) + "</span></td>" +
+            '<td><span class="paid">' + escHtml(paid) + "</span></td>" +
+            '<td><span class="han"><span class="carrier">' + escHtml(carrier) + "</span> · " + escHtml(track) + "</span></td>" +
+            '<td><div class="row-actions"><a href="#" class="act-plain" data-track="' + oid + '">Theo dõi</a></div></td>';
+
+          $("tbody-shipping").insertBefore(tr, $("tbody-shipping").firstChild);
+          currentRow.remove();
+          currentRow = null;
+
+          closeDrawer();
+          syncCounts();
+          setNote();
+          showToast("Đã ghi nhận gửi hàng " + oid + " qua " + carrier + (note ? " · " + note : "") + ".");
+        });
+
+        fCarrier.addEventListener("change", clearErrors);
+        fTrack.addEventListener("input", function () { errTrack.textContent = ""; });
+
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape" && drawer.classList.contains("show")) {
+            closeDrawer();
+          }
+        });
+
+        activate("pending");
+      })();
+    </script>
+  
+
+    <script data-micro-interactions="js">
+      (function () {
+        var lazy = document.querySelectorAll('img[loading="lazy"]');
+        for (var i = 0; i < lazy.length; i++) {
+          (function (img) {
+            if (img.complete) { img.classList.add("micro-loaded"); return; }
+            img.addEventListener("load", function () {
+              img.classList.add("micro-loaded");
+            });
+          })(lazy[i]);
+        }
+
+        var bar = document.getElementById("scroll-progress");
+        if (!bar) return;
+        function paint() {
+          var doc = document.documentElement;
+          var max = doc.scrollHeight - window.innerHeight;
+          var p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+          bar.style.setProperty("--micro-prog", p.toFixed(4));
+        }
+        window.addEventListener("scroll", paint, { passive: true });
+        window.addEventListener("resize", paint);
+        paint();
+      })();
+    </script>
+
+  </body>
+</html>

@@ -1,0 +1,1868 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AuctionHub | Tạo phiên đấu giá</title>
+    <meta
+      name="description"
+      content="Tạo phiên đấu giá mới trên AuctionHub. Cung cấp ảnh sản phẩm, thông tin, giá khởi điểm và thời gian; phiên được duyệt trong 24h."
+    />
+
+    <style>
+      /* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio.
+         Put this @layer first; product CSS outside the layer always wins. */
+      @layer od-layout {
+        :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+
+        /* containers */
+        .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+        .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+        .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+        .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+        .od-fill    { flex: 1 1 0; min-width: 0; }
+        .od-fixed   { flex: none; }
+        .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+
+        /* stacked information: each piece is its own line — never sibling inline spans */
+        .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+        :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+        .od-tile { display: grid; grid-template-rows: auto 1fr; }
+        :where(.od-tile) > :where(*) { display: block; }
+
+        /* media keeps its intrinsic ratio by default; never a distorted or cropped
+           cover by accident. height:auto lets the ratio win over an <img height="…">
+           attribute. Cropping to a uniform box is an explicit opt-in: set --od-ratio
+           AND add .od-media-cover together (per the core rule, only where a crop is
+           deliberate — tile thumbs, decorative fills — never on full-frame content). */
+        .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+        .od-media-cover { object-fit: cover; }
+
+        /* data text only — authored copy is rewritten to its budget instead */
+        .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+        .od-clamp-2 { -webkit-line-clamp: 2; }
+        .od-clamp-3 { -webkit-line-clamp: 3; }
+        .od-lines-2 { min-height: calc(2 * 1.4em); }   /* block-level reservation for a shared baseline */
+        .od-nowrap  { white-space: nowrap; }           /* 数字+单位 · 价格+起 · 日期+星期 */
+        .od-keep    { word-break: keep-all; overflow-wrap: anywhere; } /* CJK labels break at spaces / <wbr> first */
+
+        /* screen skeleton (optional): bars take their own space, the middle scrolls — no padding guessed for chrome */
+        .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+        .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+
+        /* horizontal rail: the next item peeks at the edge; trailing room survives overflow */
+        .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+                   padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+        .od-rail::-webkit-scrollbar { display: none; }
+        :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+        :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+
+        .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+        .od-touch  { min-width: 44px; min-height: 44px; }
+      }
+      /* /OD-LAYOUT-PRIMITIVES v1 */
+
+      /* ─── Design tokens ─────────────────────────────────────────────
+         Shared Stripe schema, resolved per the AuctionHub brief:
+         accent #635BFF, background #FFFFFF / #FAFAFA, charcoal text
+         #1A1A1A. Tokens referenced only through var(--name). */
+      :root {
+        --bg:           #ffffff;
+        --surface:      #ffffff;
+        --surface-warm: #fafafa;
+
+        --fg:    #1a1a1a;
+        --fg-2:  #374151;
+        --muted: #6b7280;
+        --meta:  var(--muted);
+
+        --border:      #e5e7eb;
+        --border-soft: var(--border);
+
+        --accent:    #635bff;
+        --accent-on: #ffffff;
+
+        --accent-hover:  #5851df;
+        --accent-active: #4f46d6;
+        --ring-accent:   rgba(99, 91, 255, 0.18);
+
+        --success:      #15be53;
+        --success-text: #0b7a44;
+        --success-bg:   #eaf7f1;
+        --warn:         #9b6829;
+        --danger:       #ea2261;
+        --danger-text:  #b4233e;
+        --danger-bg:    #fbeeef;
+        --amber-text:   #9a6700;
+
+        --on-dark:        #ffffff;
+        --on-dark-muted:  rgba(255, 255, 255, 0.72);
+        --dark-bg:        #1a1a1a;
+        --dark-bg-2:      #111113;
+        --dark-border:    rgba(255, 255, 255, 0.10);
+
+        --font-display:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-body:
+          "sohne-var", "Söhne", "Sohne",
+          "SF Pro Display", -apple-system, BlinkMacSystemFont,
+          system-ui, "Helvetica Neue", Arial, sans-serif;
+        --font-mono:
+          "SourceCodePro", "Source Code Pro",
+          ui-monospace, "SF Mono", "JetBrains Mono",
+          Menlo, Monaco, Consolas, monospace;
+
+        --text-xs:   12px;
+        --text-sm:   14px;
+        --text-base: 17px;
+        --text-lg:   19px;
+        --text-xl:   24px;
+        --text-2xl:  32px;
+
+        --leading-body:     1.55;
+        --leading-tight:    1.1;
+
+        --space-1:  4px;
+        --space-2:  8px;
+        --space-3:  12px;
+        --space-4:  16px;
+        --space-5:  20px;
+        --space-6:  24px;
+        --space-8:  32px;
+        --space-12: 48px;
+
+        --radius-sm: 4px;
+        --radius-md: 6px;
+        --radius-lg: 8px;
+
+        --elev-flat:   none;
+        --elev-ring:   0 0 0 1px var(--border);
+        --elev-soft:
+          rgba(50, 50, 93, 0.06) 0px 6px 18px -6px,
+          rgba(0,   0,  0, 0.06) 0px 3px 8px  -4px;
+        --elev-raised:
+          rgba(50, 50, 93, 0.16) 0px 24px 40px -28px,
+          rgba(0,   0,  0, 0.10) 0px 16px 32px -18px;
+
+        --motion-fast:   150ms;
+        --motion-base:   200ms;
+        --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+        --content-max:  800px;
+      }
+
+      /* ─── Base ─────────────────────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--font-body);
+        font-size: var(--text-base);
+        line-height: var(--leading-body);
+        font-weight: 400;
+        font-feature-settings: "ss01";
+        -webkit-font-smoothing: antialiased;
+      }
+      strong { font-weight: 600; }
+      img { max-width: 100%; }
+      p { margin: 0; }
+
+      .tnum { font-feature-settings: "tnum", "ss01"; }
+      .mono {
+        font-family: var(--font-mono);
+        font-feature-settings: "tnum", "ss01";
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration: none;
+        font-feature-settings: "ss01";
+      }
+      a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+      button { font-family: var(--font-body); font-feature-settings: "ss01"; }
+
+      /* ─── App chrome ───────────────────────────────────────────── */
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border);
+      }
+      .topbar-inner {
+        max-width: var(--content-max);
+        margin-inline: auto;
+        padding: 12px 24px;
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+      }
+      .brand {
+        font-family: var(--font-display);
+        font-feature-settings: "ss01";
+        font-weight: 600;
+        font-size: var(--text-lg);
+        color: var(--fg);
+        letter-spacing: -0.01em;
+        text-decoration: none;
+      }
+      .brand:hover { color: var(--fg); text-decoration: none; }
+      .brand-accent { color: var(--accent); }
+      .topbar-spacer { flex: 1 1 0; }
+      .topbar-user { font-size: var(--text-sm); color: var(--muted); }
+      .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--fg-2);
+        text-decoration: none;
+        padding: 6px 10px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        min-height: 40px;
+      }
+      .back-link:hover {
+        background: var(--surface-warm);
+        color: var(--fg);
+        text-decoration: none;
+      }
+
+      /* ─── Main layout ──────────────────────────────────────────── */
+      .page {
+        max-width: var(--content-max);
+        margin-inline: auto;
+        padding: 40px 24px 160px;
+      }
+      .page-head {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-3);
+        margin-block-end: var(--space-8);
+      }
+      .page-head h1 {
+        font-family: var(--font-display);
+        font-weight: 300;
+        font-size: clamp(30px, 4vw, 42px);
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+        color: var(--fg);
+        margin: 0;
+      }
+      .page-head p { color: var(--muted); font-size: var(--text-base); }
+
+      /* ─── Stepper ──────────────────────────────────────────────── */
+      .stepper {
+        list-style: none;
+        margin: 0 0 var(--space-8);
+        padding: 0;
+        display: flex;
+        align-items: flex-start;
+      }
+      .step {
+        flex: 1 1 0;
+        min-width: 0;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        text-align: center;
+      }
+      .step:not(:last-child)::after {
+        content: "";
+        position: absolute;
+        top: 16px;
+        left: calc(50% + 26px);
+        right: calc(-50% + 26px);
+        height: 2px;
+        background: var(--border);
+      }
+      .step-dot {
+        position: relative;
+        z-index: 1;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--surface);
+        border: 1.5px solid var(--border);
+        color: var(--muted);
+        font-family: var(--font-display);
+        font-size: var(--text-sm);
+        font-weight: 600;
+        font-feature-settings: "ss01";
+      }
+      .step-dot svg { width: 16px; height: 16px; }
+      .step-label {
+        display: block;
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--muted);
+        padding-inline: 4px;
+      }
+      .step.is-active .step-dot {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-on);
+        box-shadow: 0 0 0 4px var(--ring-accent);
+      }
+      .step.is-active .step-label { color: var(--fg); }
+      .step.is-done .step-dot {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-on);
+      }
+      .step.is-done::after { background: var(--accent); }
+      .step.is-done .step-label { color: var(--fg-2); }
+
+      /* ─── Step panels ──────────────────────────────────────────── */
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: var(--space-8);
+        margin-block-end: var(--space-6);
+      }
+      .panel-step { display: none; }
+      .panel-step.is-active { display: block; }
+      .panel-step.is-done { display: block; }
+
+      .step-summary { display: none; }
+      .panel-step.is-done .step-summary { display: flex; }
+      .panel-step.is-done .step-body { display: none; }
+      .step-summary {
+        flex-direction: column;
+        gap: var(--space-4);
+      }
+      .done-banner {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        color: var(--success-text);
+        font-weight: 500;
+        font-size: var(--text-sm);
+      }
+      .done-banner svg { width: 18px; height: 18px; }
+      .summary-rows {
+        display: grid;
+        gap: var(--space-2);
+        color: var(--fg-2);
+        font-size: var(--text-sm);
+      }
+
+      /* Faded (preview) state for upcoming steps */
+      .panel-step.is-faded { display: block; opacity: 0.55; pointer-events: none; }
+      .panel-step.is-faded .step-body { display: none; }
+      .panel-step.is-faded .preview { display: flex; }
+
+      .preview { display: none; flex-direction: column; gap: 10px; }
+      .preview .preview-title {
+        font-size: var(--text-sm);
+        font-weight: 600;
+        color: var(--fg);
+      }
+      .preview .preview-line {
+        display: flex;
+        justify-content: space-between;
+        gap: var(--space-4);
+        font-size: var(--text-sm);
+        color: var(--fg-2);
+      }
+      .preview .preview-line .mono { color: var(--fg); }
+
+      /* ─── Forms ────────────────────────────────────────────────── */
+      .form-grid {
+        display: grid;
+        gap: var(--space-6);
+      }
+      .form-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-4);
+      }
+      @media (max-width: 640px) {
+        .form-grid-2 { grid-template-columns: 1fr; }
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+      .field-label-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: var(--space-4);
+      }
+      .field label {
+        font-size: var(--text-sm);
+        font-weight: 500;
+        color: var(--fg-2);
+      }
+      .char-count {
+        font-size: var(--text-xs);
+        color: var(--muted);
+        font-feature-settings: "tnum", "ss01";
+        white-space: nowrap;
+      }
+      .field-hint {
+        font-size: var(--text-sm);
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .field-error {
+        font-size: var(--text-sm);
+        color: var(--danger-text);
+        line-height: 1.5;
+      }
+      .field-error:empty { display: none; }
+
+      .control {
+        width: 100%;
+        height: 48px;
+        padding: 0 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        color: var(--fg);
+        font: inherit;
+        font-feature-settings: "ss01";
+        outline: none;
+        transition:
+          border-color var(--motion-fast) var(--ease-standard),
+          box-shadow var(--motion-fast) var(--ease-standard);
+      }
+      textarea.control {
+        height: auto;
+        min-height: 132px;
+        padding: 12px 14px;
+        line-height: 1.6;
+        resize: vertical;
+      }
+      .control::placeholder { color: #9ca3af; }
+      .control:hover { border-color: #d1d5db; }
+      .control:focus-visible {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px var(--ring-accent);
+      }
+      select.control {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 14px center;
+        padding-inline-end: 40px;
+        cursor: pointer;
+      }
+
+      .price-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+      .price-wrap .control {
+        font-family: var(--font-mono);
+        font-feature-settings: "tnum", "ss01";
+        text-align: right;
+        padding-inline-end: 40px;
+        letter-spacing: 0.01em;
+      }
+      .price-unit {
+        position: absolute;
+        right: 14px;
+        color: var(--muted);
+        font-family: var(--font-mono);
+        font-feature-settings: "tnum", "ss01";
+        font-size: var(--text-base);
+        pointer-events: none;
+      }
+
+      /* ─── Upload zone ──────────────────────────────────────────── */
+      .upload-zone {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 132px;
+        padding: 24px;
+        background: var(--surface-warm);
+        border: 1.5px dashed var(--border);
+        border-radius: var(--radius-lg);
+        color: var(--muted);
+        font-size: var(--text-sm);
+        text-align: center;
+        cursor: pointer;
+        transition:
+          border-color var(--motion-fast) var(--ease-standard),
+          background-color var(--motion-fast) var(--ease-standard);
+      }
+      .upload-zone:hover,
+      .upload-zone.is-drag {
+        border-color: var(--accent);
+        background: color-mix(in oklab, var(--accent), white 96%);
+      }
+      .upload-zone svg {
+        width: 28px;
+        height: 28px;
+        color: var(--muted);
+        stroke-width: 1.75;
+      }
+      .upload-zone .up-title { color: var(--fg-2); font-weight: 500; }
+      .upload-zone .up-sub { font-size: var(--text-xs); }
+
+      .thumb-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--space-3);
+        margin-block-start: var(--space-4);
+      }
+      .thumb {
+        position: relative;
+        width: 92px;
+        height: 92px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border);
+        overflow: hidden;
+        background: var(--surface-warm);
+      }
+      .thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .thumb .main-badge {
+        position: absolute;
+        left: 6px;
+        bottom: 6px;
+        padding: 2px 6px;
+        border-radius: var(--radius-sm);
+        background: var(--accent);
+        color: var(--accent-on);
+        font-size: 11px;
+        font-weight: 600;
+        font-feature-settings: "ss01";
+      }
+      .thumb .remove {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 26px;
+        height: 26px;
+        min-height: 26px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        border-radius: 50%;
+        background: rgba(17, 17, 19, 0.72);
+        color: #fff;
+        font-size: 16px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0;
+      }
+      .thumb .remove:hover { background: var(--dark-bg); }
+      .thumb-slot {
+        width: 92px;
+        height: 92px;
+        border-radius: var(--radius-md);
+        border: 1.5px dashed var(--border);
+        background: var(--surface-warm);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: var(--text-xl);
+        transition: border-color var(--motion-fast) var(--ease-standard);
+      }
+      .thumb-slot:hover { border-color: var(--accent); color: var(--accent); }
+      .thumb-slot:disabled { opacity: 0.45; cursor: default; }
+
+      /* ─── Chips ────────────────────────────────────────────────── */
+      .chip-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        min-height: 40px;
+        padding: 8px 14px;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--fg-2);
+        font: inherit;
+        font-feature-settings: "ss01", "tnum";
+        font-size: var(--text-sm);
+        cursor: pointer;
+        transition:
+          border-color var(--motion-fast) var(--ease-standard),
+          background-color var(--motion-fast) var(--ease-standard),
+          color var(--motion-fast) var(--ease-standard),
+          box-shadow var(--motion-fast) var(--ease-standard);
+      }
+      .chip:hover { border-color: #d1d5db; background: var(--surface-warm); }
+      .chip.is-selected {
+        border-color: var(--accent);
+        background: color-mix(in oklab, var(--accent), white 94%);
+        color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent) inset;
+      }
+      .chip .custom-holder { display: contents; }
+      .chip-custom-input {
+        width: 74px;
+        border: 0;
+        background: transparent;
+        font: inherit;
+        font-feature-settings: "tnum", "ss01";
+        text-align: right;
+        outline: none;
+        color: var(--accent);
+      }
+
+      /* ─── Radio rows ───────────────────────────────────────────── */
+      .radio-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-3);
+      }
+      @media (max-width: 640px) {
+        .radio-row { grid-template-columns: 1fr; }
+      }
+      .radio-card {
+        display: flex;
+        align-items: center;
+        gap: var(--space-3);
+        padding: 14px 16px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        min-height: 48px;
+        transition:
+          border-color var(--motion-fast) var(--ease-standard),
+          box-shadow var(--motion-fast) var(--ease-standard);
+      }
+      .radio-card:hover { border-color: #d1d5db; }
+      .radio-card input { accent-color: var(--accent); width: 18px; height: 18px; margin: 0; }
+      .radio-card .rc-label { font-size: var(--text-sm); font-weight: 500; color: var(--fg-2); }
+      .radio-card.is-selected {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent) inset;
+      }
+
+      .datetime-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: var(--space-3);
+        margin-block-start: var(--space-3);
+      }
+      input[type="datetime-local"] {
+        width: auto;
+      }
+      .datetime-caption {
+        font-size: var(--text-sm);
+        color: var(--fg-2);
+        font-family: var(--font-mono);
+        font-feature-settings: "tnum", "ss01";
+      }
+
+      /* ─── Switch ───────────────────────────────────────────────── */
+      .switch-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: var(--space-4);
+        padding: var(--space-4) 0;
+      }
+      .switch-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .switch-title { font-size: var(--text-sm); font-weight: 500; color: var(--fg-2); }
+      .switch-sub { font-size: var(--text-xs); color: var(--muted); line-height: 1.5; }
+      .switch {
+        position: relative;
+        width: 44px;
+        height: 26px;
+        flex: none;
+        margin-top: 2px;
+      }
+      .switch input {
+        position: absolute;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        cursor: pointer;
+      }
+      .switch .track {
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        background: #d1d5db;
+        transition: background-color var(--motion-fast) var(--ease-standard);
+      }
+      .switch .knob {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        transition: transform var(--motion-base) var(--ease-standard);
+      }
+      .switch input:checked ~ .track { background: var(--accent); }
+      .switch input:checked ~ .knob { transform: translateX(18px); }
+      .switch input:focus-visible ~ .track { box-shadow: 0 0 0 3px var(--ring-accent); }
+
+      /* ─── Step 3 preview card ──────────────────────────────────── */
+      .preview-card {
+        display: grid;
+        gap: var(--space-5);
+        padding: var(--space-5);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--surface-warm);
+      }
+      .preview-card-head {
+        display: flex;
+        align-items: center;
+        gap: var(--space-4);
+      }
+      .preview-thumbs { display: flex; gap: 8px; }
+      .preview-thumbs img {
+        width: 64px;
+        height: 64px;
+        border-radius: var(--radius-md);
+        object-fit: cover;
+        border: 1px solid var(--border);
+      }
+      .preview-card-title {
+        min-width: 0;
+      }
+      .preview-card-title h3 {
+        font-family: var(--font-display);
+        font-weight: 500;
+        font-size: var(--text-lg);
+        letter-spacing: -0.01em;
+        margin: 0 0 6px;
+        overflow-wrap: anywhere;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 2px 8px;
+        border-radius: var(--radius-sm);
+        font-size: var(--text-xs);
+        font-weight: 500;
+        font-feature-settings: "ss01";
+      }
+      .badge-accent {
+        color: var(--accent);
+        background: color-mix(in oklab, var(--accent), white 92%);
+        border: 1px solid color-mix(in oklab, var(--accent), white 78%);
+      }
+      .preview-rows {
+        display: grid;
+        gap: 10px;
+        border-top: 1px solid var(--border);
+        padding-block-start: var(--space-4);
+      }
+      .preview-row {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: var(--space-4);
+        font-size: var(--text-sm);
+      }
+      .preview-row .k { color: var(--muted); }
+      .preview-row .v { color: var(--fg-2); font-weight: 500; }
+      .preview-row .mono { color: var(--fg); font-weight: 500; }
+
+      .fee-block {
+        display: grid;
+        gap: 4px;
+        padding: var(--space-4);
+        border-radius: var(--radius-md);
+        background: var(--surface);
+        border: 1px solid var(--border);
+      }
+      .fee-line {
+        display: flex;
+        justify-content: space-between;
+        gap: var(--space-4);
+        font-size: var(--text-sm);
+        color: var(--fg-2);
+      }
+      .fee-line strong { color: var(--fg); font-weight: 600; }
+      .fee-note { font-size: var(--text-xs); color: var(--muted); }
+
+      /* ─── Checkbox ─────────────────────────────────────────────── */
+      .check-row {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--space-3);
+        cursor: pointer;
+      }
+      .check-row input {
+        width: 18px;
+        height: 18px;
+        margin: 2px 0 0;
+        accent-color: var(--accent);
+        flex: none;
+      }
+      .check-row .check-label {
+        font-size: var(--text-sm);
+        color: var(--fg);
+        line-height: 1.55;
+      }
+
+      /* ─── Submit ───────────────────────────────────────────────── */
+      .submit-actions {
+        display: grid;
+        gap: var(--space-3);
+        margin-block-start: var(--space-5);
+      }
+      .submit-note {
+        font-size: var(--text-sm);
+        color: var(--muted);
+        text-align: center;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: var(--space-2);
+        padding: 10px 18px;
+        border-radius: var(--radius-sm);
+        font-family: var(--font-display);
+        font-feature-settings: "ss01";
+        font-weight: 500;
+        font-size: var(--text-base);
+        line-height: 1;
+        cursor: pointer;
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--fg);
+        text-decoration: none;
+        min-height: 44px;
+        transition:
+          background-color var(--motion-fast) var(--ease-standard),
+          border-color var(--motion-fast) var(--ease-standard),
+          color var(--motion-fast) var(--ease-standard),
+          box-shadow var(--motion-fast) var(--ease-standard),
+          opacity var(--motion-fast) var(--ease-standard);
+      }
+      .btn:hover { text-decoration: none; }
+      .btn:focus-visible,
+      input:focus-visible,
+      textarea:focus-visible,
+      select:focus-visible,
+      button:focus-visible {
+        outline: 2px solid var(--fg-2);
+        outline-offset: 2px;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: var(--accent-on);
+      }
+      .btn-primary:hover  { background: var(--accent-hover); color: var(--accent-on); }
+      .btn-primary:active { background: var(--accent-active); color: var(--accent-on); }
+      .btn-primary:disabled {
+        background: #9aa5f8;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+      .btn-ghost {
+        background: transparent;
+        color: var(--fg);
+        border-color: var(--border);
+      }
+      .btn-ghost:hover { background: var(--surface-warm); color: var(--fg); border-color: #d1d5db; }
+      .btn-lg {
+        width: 100%;
+        height: 56px;
+        min-height: 56px;
+        font-size: var(--text-base);
+      }
+
+      /* ─── Sticky footer ────────────────────────────────────────── */
+      .sticky-foot {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 30;
+        background: rgba(255, 255, 255, 0.96);
+        backdrop-filter: blur(12px);
+        border-top: 1px solid var(--border);
+      }
+      .sticky-foot-inner {
+        max-width: var(--content-max);
+        margin-inline: auto;
+        padding: 14px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-4);
+      }
+
+      /* ─── Toast ────────────────────────────────────────────────── */
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 88px;
+        transform: translateX(-50%) translateY(12px);
+        z-index: 60;
+        padding: 12px 20px;
+        border-radius: var(--radius-md);
+        background: var(--dark-bg);
+        color: var(--on-dark);
+        font-size: var(--text-sm);
+        box-shadow: var(--elev-raised);
+        opacity: 0;
+        pointer-events: none;
+        transition:
+          opacity var(--motion-base) var(--ease-standard),
+          transform var(--motion-base) var(--ease-standard);
+        max-width: min(90vw, 480px);
+        text-align: center;
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+
+      /* ─── Success state ────────────────────────────────────────── */
+      .success-card {
+        display: grid;
+        gap: var(--space-4);
+        justify-items: center;
+        text-align: center;
+        padding: var(--space-12) var(--space-8);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+      }
+      .success-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--accent);
+        background: color-mix(in oklab, var(--accent), white 90%);
+      }
+      .success-icon svg { width: 28px; height: 28px; }
+      .success-card h2 {
+        font-family: var(--font-display);
+        font-weight: 300;
+        font-size: var(--text-2xl);
+        letter-spacing: -0.02em;
+        margin: 0;
+      }
+      .success-card p { color: var(--muted); max-width: 42ch; }
+      .success-actions {
+        display: flex;
+        gap: var(--space-3);
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      @media (max-width: 560px) {
+        .page { padding: 28px 16px 140px; }
+        .topbar-inner, .sticky-foot-inner { padding-inline: 16px; }
+        .panel { padding: var(--space-5); }
+        .step-label { font-size: var(--text-xs); }
+        .topbar-user { display: none; }
+      }
+    </style>
+  
+
+    <!-- OD MICRO-INTERACTIONS START -->
+    <style data-micro-interactions="css">
+      /* Cross-page micro-interactions: focus ring, link slide underline,
+         button press, lazy image fade, dialog rise, scroll progress. */
+
+      :focus-visible {
+        outline: 2px solid var(--accent, #635bff);
+        outline-offset: 4px;
+        transition: outline-color 120ms ease;
+      }
+
+      /* Unify link underline into one animated system. !important suppresses
+         per-page text-decoration so only the slide underline renders; the
+         element-level background-image only affects painting, never layout. */
+      a {
+        text-decoration: none !important;
+        background-image: linear-gradient(currentColor, currentColor);
+        background-repeat: no-repeat;
+        background-position: 0 100%;
+        background-size: 0 1px;
+        background-origin: border-box;
+        transition:
+          background-size 150ms cubic-bezier(0.2, 0, 0, 1),
+          color 150ms ease,
+          background-color 150ms ease,
+          border-color 150ms ease,
+          opacity 150ms ease,
+          transform 150ms ease;
+      }
+      a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover {
+        background-size: 100% 1px;
+      }
+
+      button:not(.pwd-toggle):active,
+      .btn:active,
+      [role="button"]:active {
+        transform: scale(0.98);
+      }
+
+      @keyframes micro-rise {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      [role="dialog"] > *,
+      .drawer-inner > *,
+      .drawer-panel > * {
+        animation: micro-rise 260ms cubic-bezier(0.2, 0, 0, 1) both;
+      }
+      [role="dialog"] > * + *,
+      .drawer-inner > * + *,
+      .drawer-panel > * + * {
+        animation-delay: 50ms;
+      }
+
+      img[loading="lazy"] {
+        opacity: 0.8;
+        transition: opacity 260ms ease;
+      }
+      img[loading="lazy"].micro-loaded { opacity: 1; }
+
+      #scroll-progress {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%;
+        height: 2px;
+        transform: scaleX(var(--micro-prog, 0));
+        transform-origin: left center;
+        background: var(--accent, #635bff);
+        z-index: 1000;
+        pointer-events: none;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        a { background-image: none; }
+        a:not(.btn):not(.brand):not(.side-brand):not(.switch-btn):not(.thumb):not(.card-link):not(.tile-link):not(.media-link):hover { background-size: 0 1px; }
+        button:not(.pwd-toggle):active,
+        .btn:active,
+        [role="button"]:active { transform: none; }
+        [role="dialog"] > *,
+        .drawer-inner > *,
+        .drawer-panel > * { animation: none; }
+        img[loading="lazy"] { opacity: 1; transition: none; }
+        #scroll-progress { transform: none; }
+      }
+    </style>
+    <!-- /OD MICRO-INTERACTIONS -->
+
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand" href="index.html">Auction<span class="brand-accent">Hub</span></a>
+        <div class="topbar-spacer"></div>
+        <span class="topbar-user">Đã đăng nhập: TechStore VN</span>
+        <a class="back-link" href="dashboard.html"><span aria-hidden="true">←</span> Bảng điều khiển</a>
+      </div>
+    </header>
+
+    <main class="page" id="main">
+      <div class="page-head">
+        <h1>Tạo phiên đấu giá</h1>
+        <p>Phiên được duyệt trước khi hiển thị. Bạn sẽ nhận email khi có kết quả.</p>
+      </div>
+
+      <ol class="stepper" aria-label="Tiến trình tạo phiên">
+        <li class="step is-active" data-step="1">
+          <span class="step-dot" aria-hidden="true">1</span>
+          <span class="step-label">Thông tin sản phẩm</span>
+        </li>
+        <li class="step" data-step="2">
+          <span class="step-dot" aria-hidden="true">2</span>
+          <span class="step-label">Giá và thời gian</span>
+        </li>
+        <li class="step" data-step="3">
+          <span class="step-dot" aria-hidden="true">3</span>
+          <span class="step-label">Xem lại</span>
+        </li>
+      </ol>
+
+      <!-- ══════════ STEP 1 - Thông tin sản phẩm ══════════ -->
+      <section class="panel panel-step is-active" id="step-1" data-panel="1">
+        <div class="step-body">
+          <div class="form-grid">
+            <div class="field">
+              <div class="field-label-row">
+                <label for="title">Tiêu đề</label>
+                <span class="char-count"><span id="title-count">24</span>/120</span>
+              </div>
+              <input
+                class="control"
+                id="title"
+                name="title"
+                type="text"
+                maxlength="120"
+                value="MacBook Pro 14 M3 2023"
+                placeholder="Ví dụ: MacBook Pro 14 M3 2023"
+              />
+              <p class="field-error" id="title-error"></p>
+            </div>
+
+            <div class="form-grid-2">
+              <div class="field">
+                <label for="category">Danh mục</label>
+                <select class="control" id="category" name="category">
+                  <option value="dien-thoai">Điện thoại</option>
+                  <option value="laptop" selected>Laptop</option>
+                  <option value="tablet">Tablet</option>
+                  <option value="phu-kien">Phụ kiện</option>
+                  <option value="khac">Khác</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="condition">Tình trạng</label>
+                <select class="control" id="condition" name="condition">
+                  <option value="moi">Mới</option>
+                  <option value="like-new" selected>Like New</option>
+                  <option value="da-qua-su-dung">Đã qua sử dụng</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="field-label-row">
+                <label>Ảnh sản phẩm</label>
+              </div>
+              <div
+                class="upload-zone"
+                id="upload-zone"
+                role="button"
+                tabindex="0"
+                aria-label="Chọn ảnh sản phẩm, tối đa 5 ảnh"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 16V4" />
+                  <path d="m6 10 6-6 6 6" />
+                  <path d="M4 20h16" />
+                </svg>
+                <span class="up-title">Kéo thả ảnh hoặc click để chọn</span>
+                <span class="up-sub">Tối đa 5 ảnh, mỗi ảnh ≤ 5MB</span>
+              </div>
+              <input type="file" id="file-input" accept="image/*" multiple hidden />
+              <div class="thumb-grid" id="thumb-grid" aria-label="Ảnh đã chọn"></div>
+              <p class="field-error" id="image-error"></p>
+              <p class="field-hint">Ảnh đầu tiên được dùng làm ảnh chính. Kéo giữ thứ tự nếu cần.</p>
+            </div>
+
+            <div class="field">
+              <div class="field-label-row">
+                <label for="desc">Mô tả</label>
+                <span class="char-count"><span id="desc-count">142</span>/2000</span>
+              </div>
+              <textarea
+                class="control"
+                id="desc"
+                name="desc"
+                maxlength="2000"
+                minlength="50"
+                placeholder="Mô tả tình trạng thật, phụ kiện kèm theo, lý do bán"
+              >Máy Like New, 98% pin, không trầy xước. Còn 6 tháng bảo hành Apple.
+Kèm hộp, sạc 70W, cáp MagSafe 3. Mua tháng 3/2023 tại FPT Shop.</textarea>
+              <p class="field-error" id="desc-error"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-summary" aria-live="polite">
+          <div class="done-banner">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+            Thông tin sản phẩm đã hoàn tất
+          </div>
+          <div class="summary-rows">
+            <span><span class="mono">MacBook Pro 14 M3 2023</span> · Like New</span>
+            <span id="sum-images">2 ảnh đã chọn</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════ STEP 2 - Giá và thời gian ══════════ -->
+      <section class="panel panel-step is-faded" id="step-2" data-panel="2">
+        <div class="preview" aria-hidden="true">
+          <span class="preview-title">Giá và thời gian</span>
+          <div class="preview-line"><span>Giá khởi điểm</span><span class="mono">28.000.000đ</span></div>
+          <div class="preview-line"><span>Bước giá</span><span class="mono">500K</span></div>
+          <div class="preview-line"><span>Kết thúc</span><span class="mono">22/09/2026 20:00</span></div>
+        </div>
+
+        <div class="step-body">
+          <div class="form-grid">
+            <div class="form-grid-2">
+              <div class="field">
+                <label for="start-price">Giá khởi điểm</label>
+                <div class="price-wrap">
+                  <input
+                    class="control"
+                    id="start-price"
+                    name="start-price"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    value="28.000.000"
+                  />
+                  <span class="price-unit">đ</span>
+                </div>
+                <p class="field-error" id="start-price-error"></p>
+              </div>
+              <div class="field">
+                <label for="reserve-price">Giá ẩn (không bắt buộc)</label>
+                <div class="price-wrap">
+                  <input
+                    class="control"
+                    id="reserve-price"
+                    name="reserve-price"
+                    type="text"
+                    inputmode="numeric"
+                    autocomplete="off"
+                    value="30.000.000"
+                  />
+                  <span class="price-unit">đ</span>
+                </div>
+                <p class="field-hint">Phiên không bán nếu giá không đạt mức này.</p>
+              </div>
+            </div>
+
+            <div class="field">
+              <label id="increment-label">Bước giá tối thiểu</label>
+              <div class="chip-row" role="radiogroup" aria-labelledby="increment-label">
+                <button type="button" class="chip" data-chip="50000" role="radio" aria-checked="false">50K</button>
+                <button type="button" class="chip" data-chip="100000" role="radio" aria-checked="false">100K</button>
+                <button type="button" class="chip is-selected" data-chip="500000" role="radio" aria-checked="true">500K</button>
+                <button type="button" class="chip" data-chip="custom" role="radio" aria-checked="false" id="chip-custom">
+                  Tùy chỉnh
+                  <span class="custom-holder" id="custom-holder" hidden>
+                    <input
+                      class="chip-custom-input"
+                      type="text"
+                      inputmode="numeric"
+                      id="custom-step"
+                      value="750.000"
+                      aria-label="Bước giá tùy chỉnh"
+                    />
+                  </span>
+                </button>
+              </div>
+              <p class="field-hint">Giá trả phải là bội số của bước giá.</p>
+            </div>
+
+            <div class="field">
+              <label id="start-label">Thời gian bắt đầu</label>
+              <div class="radio-row" role="radiogroup" aria-labelledby="start-label">
+                <label class="radio-card is-selected">
+                  <input type="radio" name="start" value="now" checked />
+                  <span class="rc-label">Bắt đầu ngay</span>
+                </label>
+                <label class="radio-card">
+                  <input type="radio" name="start" value="schedule" />
+                  <span class="rc-label">Lên lịch</span>
+                </label>
+              </div>
+              <div class="datetime-row" id="schedule-row" hidden>
+                <label class="field" style="gap:6px">
+                  <span style="font-size:var(--text-sm);font-weight:500;color:var(--fg-2)">Bắt đầu lúc</span>
+                  <input class="control" type="datetime-local" id="start-datetime" value="2026-09-19T09:00" />
+                </label>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="field-label-row">
+                <label for="end-datetime">Thời gian kết thúc</label>
+              </div>
+              <div class="datetime-row">
+                <input class="control" type="datetime-local" id="end-datetime" value="2026-09-22T20:00" />
+                <span class="datetime-caption" id="end-caption">Kết thúc: 22/09/2026 20:00</span>
+              </div>
+              <p class="field-hint">Tối thiểu 1 giờ, tối đa 30 ngày.</p>
+              <p class="field-error" id="end-error"></p>
+            </div>
+
+            <div class="switch-row">
+              <div class="switch-copy">
+                <span class="switch-title">Tự động gia hạn nếu có bid trong 5 phút cuối</span>
+                <span class="switch-sub">eBay-style. Tránh snipe bid ở giây cuối.</span>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="auto-extend" checked aria-label="Tự động gia hạn" />
+                <span class="track" aria-hidden="true"></span>
+                <span class="knob" aria-hidden="true"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-summary" aria-live="polite">
+          <div class="done-banner">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+            Giá và thời gian đã hoàn tất
+          </div>
+          <div class="summary-rows">
+            <span>Giá khởi điểm <span class="mono">28.000.000đ</span> · Bước giá <span class="mono">500K</span></span>
+            <span>Kết thúc <span class="mono">22/09/2026 20:00</span> · Tự động gia hạn</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════ STEP 3 - Xem lại ══════════ -->
+      <section class="panel panel-step is-faded" id="step-3" data-panel="3">
+        <div class="preview" aria-hidden="true">
+          <span class="preview-title">Xem lại</span>
+          <div class="preview-line"><span>Kiểm tra thông tin trước khi gửi duyệt</span><span></span></div>
+        </div>
+
+        <div class="step-body">
+          <div class="form-grid">
+            <div class="preview-card">
+              <div class="preview-card-head">
+                <span class="preview-thumbs" aria-hidden="true">
+                  <img src="images/laptop.jpg" alt="" width="64" height="64" />
+                  <img src="images/mbp-front.jpg" alt="" width="64" height="64" />
+                </span>
+                <span class="preview-card-title">
+                  <h3 id="pv-title">MacBook Pro 14 M3 2023</h3>
+                  <span class="badge badge-accent" id="pv-condition">Like New</span>
+                </span>
+              </div>
+              <div class="preview-rows">
+                <div class="preview-row">
+                  <span class="k">Giá khởi điểm</span>
+                  <span class="v mono" id="pv-price">28.000.000đ</span>
+                </div>
+                <div class="preview-row">
+                  <span class="k">Bước giá</span>
+                  <span class="v mono" id="pv-step">500K</span>
+                </div>
+                <div class="preview-row">
+                  <span class="k">Kết thúc</span>
+                  <span class="v mono" id="pv-end">22/09/2026 20:00</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="fee-block">
+              <div class="fee-line">
+                <span>Phí nền tảng 7%</span>
+                <strong id="fee-amount">~1.960.000đ nếu bán ở giá 28.000.000đ</strong>
+              </div>
+              <p class="fee-note">Phí này chỉ thu khi phiên thành công.</p>
+            </div>
+
+            <label class="check-row">
+              <input type="checkbox" id="confirm-ownership" />
+              <span class="check-label">Tôi cam kết thông tin trên là chính xác và có quyền bán sản phẩm này.</span>
+            </label>
+            <p class="field-error" id="confirm-error"></p>
+
+            <div class="submit-actions">
+              <button type="button" class="btn btn-primary btn-lg" id="submit-btn">Gửi duyệt</button>
+              <p class="submit-note">Admin duyệt trong vòng 24h. Bạn sẽ nhận email khi phiên được duyệt.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-summary" aria-live="polite">
+          <div class="done-banner">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+            Phiên sẵn sàng gửi duyệt
+          </div>
+          <div class="submit-actions">
+            <button type="button" class="btn btn-primary btn-lg" id="submit-btn-2">Gửi duyệt</button>
+            <p class="submit-note">Admin duyệt trong vòng 24h. Bạn sẽ nhận email khi phiên được duyệt.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="sticky-foot">
+      <div class="sticky-foot-inner">
+        <button type="button" class="btn btn-ghost" id="draft-btn">Lưu nháp</button>
+        <button type="button" class="btn btn-primary" id="continue-btn" disabled>Tiếp tục</button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        var $ = function (id) { return document.getElementById(id); };
+
+        /* ── Current step ── */
+        var current = 1;
+        var panels = { 1: $("step-1"), 2: $("step-2"), 3: $("step-3") };
+        var stepEls = document.querySelectorAll(".step");
+        var continueBtn = $("continue-btn");
+        var toast = $("toast");
+        var toastTimer = null;
+
+        function showToast(msg) {
+          toast.textContent = msg;
+          toast.classList.add("show");
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(function () {
+            toast.classList.remove("show");
+          }, 2600);
+        }
+
+        /* ── Stepper / panel rendering ── */
+        function renderStep() {
+          stepEls.forEach(function (el) {
+            var n = parseInt(el.getAttribute("data-step"), 10);
+            el.classList.toggle("is-done", n < current);
+            el.classList.toggle("is-active", n === current);
+            el.classList.remove("is-todo");
+            var dot = el.querySelector(".step-dot");
+            if (n < current) {
+              dot.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
+            } else {
+              dot.textContent = String(n);
+            }
+          });
+          for (var k in panels) {
+            var p = panels[k];
+            var idx = parseInt(k, 10);
+            p.classList.remove("is-active", "is-done", "is-faded");
+            if (idx === current) p.classList.add("is-active");
+            else if (idx < current) p.classList.add("is-done");
+            else p.classList.add("is-faded");
+          }
+          document.body.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        /* ── Step 1: thumbs ── */
+        var images = [
+          { url: "images/laptop.jpg", draft: true },
+          { url: "images/mbp-front.jpg", draft: true }
+        ];
+        var thumbGrid = $("thumb-grid");
+        var fileInput = $("file-input");
+        var MAX_IMAGES = 5;
+
+        function renderThumbs() {
+          thumbGrid.innerHTML = "";
+          images.forEach(function (img, i) {
+            var div = document.createElement("div");
+            div.className = "thumb";
+            var elImg = document.createElement("img");
+            elImg.src = img.url;
+            elImg.alt = i === 0 ? "Ảnh chính" : "Ảnh " + (i + 1);
+            elImg.width = 92;
+            elImg.height = 92;
+            div.appendChild(elImg);
+            if (i === 0) {
+              var badge = document.createElement("span");
+              badge.className = "main-badge";
+              badge.textContent = "Ảnh chính";
+              div.appendChild(badge);
+            }
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "remove";
+            btn.setAttribute("aria-label", "Xóa ảnh " + (i + 1));
+            btn.textContent = "×";
+            btn.addEventListener("click", function (e) {
+              e.stopPropagation();
+              if (!img.draft && img.url.indexOf("blob:") === 0) {
+                try { URL.revokeObjectURL(img.url); } catch (err) {}
+              }
+              images.splice(i, 1);
+              renderThumbs();
+              updateThumbSummary();
+              validateStep1();
+            });
+            div.appendChild(btn);
+            thumbGrid.appendChild(div);
+          });
+          var empty = MAX_IMAGES - images.length;
+          for (var j = 0; j < empty; j++) {
+            var slot = document.createElement("button");
+            slot.type = "button";
+            slot.className = "thumb-slot";
+            slot.setAttribute("aria-label", "Thêm ảnh sản phẩm");
+            slot.textContent = "+";
+            slot.addEventListener("click", function () { fileInput.click(); });
+            thumbGrid.appendChild(slot);
+          }
+        }
+
+        function updateThumbSummary() {
+          $("sum-images").textContent = images.length + " ảnh đã chọn";
+        }
+
+        function addFiles(list) {
+          var added = 0;
+          for (var i = 0; i < list.length && images.length < MAX_IMAGES; i++) {
+            var f = list[i];
+            if (!f.type || f.type.indexOf("image/") !== 0) continue;
+            if (f.size > 5 * 1024 * 1024) { showToast("Mỗi ảnh phải ≤ 5MB."); continue; }
+            images.push({ url: URL.createObjectURL(f), draft: false });
+            added++;
+          }
+          renderThumbs();
+          updateThumbSummary();
+          validateStep1();
+          if (added > 0) showToast("Đã thêm " + added + " ảnh.");
+        }
+
+        function openPicker() { fileInput.click(); }
+
+        $("upload-zone").addEventListener("click", openPicker);
+        $("upload-zone").addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPicker(); }
+        });
+        var zone = $("upload-zone");
+        ["dragenter", "dragover"].forEach(function (ev) {
+          zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.add("is-drag"); });
+        });
+        ["dragleave", "drop"].forEach(function (ev) {
+          zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.remove("is-drag"); });
+        });
+        zone.addEventListener("drop", function (e) { addFiles(e.dataTransfer.files); });
+        fileInput.addEventListener("change", function () {
+          addFiles(fileInput.files);
+          fileInput.value = "";
+        });
+
+        /* ── Step 1: counters + validation ── */
+        $("title").addEventListener("input", function () {
+          $("title-count").textContent = this.value.length;
+          validateStep1();
+        });
+        $("desc").addEventListener("input", function () {
+          $("desc-count").textContent = this.value.length;
+          validateStep1();
+        });
+
+        function validateStep1() {
+          var title = $("title").value.trim();
+          var desc = $("desc").value;
+          var ok = images.length >= 1 && title.length >= 10 && desc.length >= 50;
+          $("title-error").textContent = title.length < 10 ? "Tiêu đề cần ít nhất 10 ký tự." : "";
+          $("desc-error").textContent = desc.length < 50 ? "Mô tả tối thiểu 50 ký tự, còn thiếu " + (50 - desc.length) + " ký tự." : "";
+          $("image-error").textContent = images.length < 1 ? "Cần ít nhất 1 ảnh sản phẩm." : "";
+          continueBtn.disabled = !ok;
+          if (current === 1) return ok;
+          return true;
+        }
+
+        /* ── Step 2: price formatting ── */
+        function stripNum(v) {
+          return String(v).replace(/[^\d]/g, "");
+        }
+        function fmtVnd(v) {
+          return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
+        function bindPrice(el) {
+          el.addEventListener("input", function () {
+            var n = stripNum(this.value);
+            this.value = n === "" ? "" : fmtVnd(n);
+          });
+        }
+        bindPrice($("start-price"));
+        bindPrice($("reserve-price"));
+
+        /* ── Step 2: increment chips ── */
+        var chipSelected = "500000";
+        var chips = document.querySelectorAll(".chip-row .chip");
+        chips.forEach(function (chip) {
+          chip.addEventListener("click", function () {
+            chips.forEach(function (c) {
+              c.classList.remove("is-selected");
+              c.setAttribute("aria-checked", "false");
+            });
+            var customHolder = $("custom-holder");
+            if (chip.getAttribute("data-chip") === "custom") {
+              chip.classList.add("is-selected");
+              chip.setAttribute("aria-checked", "true");
+              customHolder.hidden = false;
+              chipSelected = stripNum($("custom-step").value) || "500000";
+              syncStepPreview();
+            } else {
+              customHolder.hidden = true;
+              chipSelected = chip.getAttribute("data-chip");
+              chip.classList.add("is-selected");
+              chip.setAttribute("aria-checked", "true");
+              syncStepPreview();
+            }
+          });
+        });
+        $("custom-step").addEventListener("input", function () {
+          chipSelected = stripNum(this.value) || "";
+          syncStepPreview();
+        });
+
+        /* ── Step 2: start-time radios ── */
+        var radios = document.querySelectorAll("input[name='start']");
+        radios.forEach(function (r) {
+          r.addEventListener("change", function () {
+            document.querySelectorAll(".radio-card").forEach(function (c) {
+              c.classList.toggle("is-selected", c.contains(r) && r.checked);
+            });
+            $("schedule-row").hidden = r.value !== "schedule";
+          });
+        });
+
+        /* ── Step 2: end datetime caption ── */
+        function fmtDt(v) {
+          if (!v) return "";
+          var d = new Date(v);
+          if (isNaN(d.getTime())) return "";
+          var dd = ("0" + d.getDate()).slice(-2);
+          var mm = ("0" + (d.getMonth() + 1)).slice(-2);
+          var yyyy = d.getFullYear();
+          var hh = ("0" + d.getHours()).slice(-2);
+          var mi = ("0" + d.getMinutes()).slice(-2);
+          return dd + "/" + mm + "/" + yyyy + " " + hh + ":" + mi;
+        }
+        function syncEndCaption() {
+          var v = $("end-datetime").value;
+          var caption = fmtDt(v);
+          $("end-caption").textContent = caption ? "Kết thúc: " + caption : "Kết thúc: chưa chọn";
+        }
+        $("end-datetime").addEventListener("input", syncEndCaption);
+        $("start-datetime").addEventListener("input", function () {
+          var min = new Date(new Date(this.value).getTime() + 3600 * 1000);
+          if (min < new Date($("end-datetime").value)) return;
+        });
+
+        /* ── Step 2: validate ── */
+        function validateStep2() {
+          var start = parseInt(stripNum($("start-price").value), 10) || 0;
+          var endV = $("end-datetime").value;
+          var startV = $("start-datetime").value;
+          var from = new Date(startV || Date.now());
+          var to = endV ? new Date(endV) : null;
+          var ok = start >= 1000;
+          var msg = "";
+          if (!ok) msg = "Giá khởi điểm phải lớn hơn 0.";
+          else if (to && (to.getTime() - from.getTime()) < 3600 * 1000) {
+            ok = false;
+            msg = "Thời gian kết thúc phải cách bắt đầu ít nhất 1 giờ.";
+          }
+          $("start-price-error").textContent = msg;
+          return ok;
+        }
+
+        /* ── Step previews (step 2 + 3) ── */
+        function syncStepPreview() {
+          var start = $("start-price").value || "0";
+          var stepLabel = "500K";
+          if (chipSelected === "50000") stepLabel = "50K";
+          else if (chipSelected === "100000") stepLabel = "100K";
+          else if (chipSelected && chipSelected !== "500000" && chipSelected !== "50000" && chipSelected !== "100000") {
+            stepLabel = fmtVnd(chipSelected) + "đ";
+          }
+          var previewLines = document.querySelectorAll("#step-2 .preview .preview-line");
+          if (previewLines[0]) previewLines[0].querySelector(".mono").textContent = start + "đ";
+          if (previewLines[1]) previewLines[1].querySelector(".mono").textContent = stepLabel;
+          if (previewLines[2]) previewLines[2].querySelector(".mono").textContent = fmtDt($("end-datetime").value) || "22/09/2026 20:00";
+          $("summary-rows-el-2").textContent = "Giá khởi điểm " + start + "đ · Bước giá " + stepLabel;
+        }
+        $("start-price").addEventListener("input", syncStepPreview);
+        $("end-datetime").addEventListener("input", syncStepPreview);
+
+        /* rename placeholder of step 2 summary (set id dynamically) */
+        var s2rows = panels[2].querySelector(".summary-rows span");
+        s2rows.id = "summary-rows-el-2";
+
+        /* ── Step 3 sync ── */
+        function syncStep3() {
+          $("pv-title").textContent = $("title").value.trim();
+          var condMap = { "moi": "Mới", "like-new": "Like New", "da-qua-su-dung": "Đã qua sử dụng" };
+          $("pv-condition").textContent = condMap[$("condition").value] || "Like New";
+          var start = $("start-price").value || "0";
+          $("pv-price").textContent = start + "đ";
+          var stepLabel = "500K";
+          if (chipSelected === "50000") stepLabel = "50K";
+          else if (chipSelected === "100000") stepLabel = "100K";
+          else if (chipSelected && chipSelected !== "500000" && chipSelected !== "50000" && chipSelected !== "100000") {
+            stepLabel = fmtVnd(chipSelected) + "đ";
+          }
+          $("pv-step").textContent = stepLabel;
+          $("pv-end").textContent = fmtDt($("end-datetime").value) || "22/09/2026 20:00";
+          var raw = parseInt(stripNum(start), 10) || 0;
+          var fee = Math.round(raw * 0.07 / 1000) * 1000;
+          $("fee-amount").textContent = "~" + fmtVnd(fee) + "đ nếu bán ở giá " + fmtVnd(raw) + "đ";
+        }
+
+        /* ══ Continue button ══ */
+        continueBtn.addEventListener("click", function () {
+          if (current === 1) {
+            if (!validateStep1()) return;
+            syncStepPreview();
+            current = 2;
+          } else if (current === 2) {
+            if (!validateStep2()) return;
+            syncStep3();
+            current = 3;
+          }
+          continueBtn.hidden = current === 3;
+          renderStep();
+          document.getElementById("step-" + current).scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+
+        /* ══ Draft (Lưu nháp) ══ */
+        var DRAFT_KEY = "ah_draft_new_v1";
+        function collectDraft() {
+          return {
+            title: $("title").value,
+            desc: $("desc").value,
+            category: $("category").value,
+            condition: $("condition").value,
+            startPrice: $("start-price").value,
+            reservePrice: $("reserve-price").value,
+            step: chipSelected,
+            end: $("end-datetime").value,
+            extend: $("auto-extend").checked
+          };
+        }
+        $("draft-btn").addEventListener("click", function () {
+          try {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(collectDraft()));
+            showToast("Đã lưu nháp.");
+          } catch (err) {
+            showToast("Không lưu được nháp trên trình duyệt này.");
+          }
+        });
+        function restoreDraft() {
+          var raw;
+          try { raw = localStorage.getItem(DRAFT_KEY); } catch (err) { return; }
+          if (!raw) return;
+          try {
+            var d = JSON.parse(raw);
+            if (d.title) $("title").value = d.title;
+            if (d.desc) $("desc").value = d.desc;
+            if (d.category) $("category").value = d.category;
+            if (d.condition) $("condition").value = d.condition;
+            if (d.startPrice) $("start-price").value = d.startPrice;
+            if (d.reservePrice) $("reserve-price").value = d.reservePrice;
+            if (d.end) $("end-datetime").value = d.end;
+            if (d.extend === false) $("auto-extend").checked = false;
+            if (d.step) {
+              chips.forEach(function (c) {
+                if (c.getAttribute("data-chip") === d.step) {
+                  c.click();
+                }
+              });
+            }
+            $("title-count").textContent = ($("title").value || "").length;
+            $("desc-count").textContent = ($("desc").value || "").length;
+            syncEndCaption();
+            syncStepPreview();
+            validateStep1();
+            showToast("Đã khôi phục nháp lần trước.");
+          } catch (err) {}
+        }
+
+        /* ══ Submit (Gửi duyệt) ══ */
+        function submitHandler(ev) {
+          ev.preventDefault();
+          if (current !== 3) { continueBtn.click(); return; }
+          if (!validateStep2()) return;
+          if (!$("confirm-ownership").checked) {
+            $("confirm-error").textContent = "Cần xác nhận quyền bán sản phẩm này.";
+            $("confirm-ownership").focus();
+            return;
+          }
+          $("confirm-error").textContent = "";
+          var h = '<div class="success-card">' +
+            '<span class="success-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span>' +
+            '<h2>Đã gửi duyệt</h2>' +
+            '<p>Phiên <strong>' + ($("title").value.trim() || "sản phẩm") + '</strong> đang chờ admin duyệt. Bạn sẽ nhận email khi có kết quả.</p>' +
+            '<div class="success-actions">' +
+            '<a class="btn btn-primary" href="dashboard.html">Về bảng điều khiển</a>' +
+            '<a class="btn btn-ghost" href="index.html">Về trang chủ</a>' +
+            '</div></div>';
+          $("main").innerHTML = h;
+          try { localStorage.removeItem(DRAFT_KEY); } catch (err) {}
+          continueBtn.hidden = true;
+        }
+        $("submit-btn").addEventListener("click", submitHandler);
+        $("submit-btn-2").addEventListener("click", submitHandler);
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" && e.target.type === "text") e.preventDefault();
+        });
+
+        /* ══ Init ══ */
+        renderThumbs();
+        updateThumbSummary();
+        syncEndCaption();
+        syncStepPreview();
+        renderStep();
+        restoreDraft();
+      })();
+    </script>
+  
+
+    <script data-micro-interactions="js">
+      (function () {
+        var lazy = document.querySelectorAll('img[loading="lazy"]');
+        for (var i = 0; i < lazy.length; i++) {
+          (function (img) {
+            if (img.complete) { img.classList.add("micro-loaded"); return; }
+            img.addEventListener("load", function () {
+              img.classList.add("micro-loaded");
+            });
+          })(lazy[i]);
+        }
+
+        var bar = document.getElementById("scroll-progress");
+        if (!bar) return;
+        function paint() {
+          var doc = document.documentElement;
+          var max = doc.scrollHeight - window.innerHeight;
+          var p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
+          bar.style.setProperty("--micro-prog", p.toFixed(4));
+        }
+        window.addEventListener("scroll", paint, { passive: true });
+        window.addEventListener("resize", paint);
+        paint();
+      })();
+    </script>
+
+  </body>
+</html>
