@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-
-const MOCK_WATCHLIST = [
-  { id: 1, title: 'MacBook Pro 14 M3 2023', price: '38.500.000đ', time: '13:23:20', isEnding: true, img: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800' },
-  { id: 2, title: 'iPhone 15 Pro Max 256GB', price: '27.900.000đ', time: '36:15:00', isEnding: false, img: 'https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=800' },
-];
+import { localDB } from '../../utils/localDB';
 
 export default function WatchlistPage() {
-  const [items, setItems] = useState(MOCK_WATCHLIST);
+  const [items, setItems] = useState(() => localDB.getWatchlist().map((id) => localDB.getAuction(id)).filter((item) => item !== undefined));
+  const [renderedAt] = useState(() => Date.now());
 
-  const handleRemove = (id: number) => {
+  const handleRemove = (id: string) => {
+    localDB.toggleWatch(id);
     setItems(items.filter(item => item.id !== id));
+  };
+
+  const formatTime = (endsAt: string) => {
+    const total = Math.max(0, Math.floor((new Date(endsAt).getTime() - renderedAt) / 1000));
+    const h = Math.floor(total / 3600); const m = Math.floor((total % 3600) / 60); const s = total % 60;
+    return [h, m, s].map((value) => value.toString().padStart(2, '0')).join(':');
   };
 
   return (
@@ -47,7 +51,7 @@ export default function WatchlistPage() {
               </div>
             </div>
 
-            <p className="watch-note">1 phiên kết thúc trong 24h tới.</p>
+            <p className="watch-note">{items.filter((item) => new Date(item.endsAt).getTime() - renderedAt < 86400000).length} phiên kết thúc trong 24h tới.</p>
 
             <div className="sale-grid">
               {items.map((item) => (
@@ -58,19 +62,19 @@ export default function WatchlistPage() {
                       <svg className="ic-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
                     </button>
                     <Link className="media" to={`/auctions/${item.id}`} style={{ display: 'block' }}>
-                      <img src={item.img} alt={item.title} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', borderRadius: '6px' }} />
+                      <img src={item.images[0]} alt={item.title} style={{ width: '100%', aspectRatio: '4/3', objectFit: 'cover', borderRadius: '6px' }} />
                     </Link>
-                    {item.isEnding && <span className="ending-badge">Sắp kết thúc</span>}
+                    {new Date(item.endsAt).getTime() - renderedAt < 86400000 && <span className="ending-badge">Sắp kết thúc</span>}
                   </div>
                   <div className="sale-body">
                     <h3 className="card-title"><Link to={`/auctions/${item.id}`}>{item.title}</Link></h3>
                     <div className="sale-price-row">
                       <span className="price-grid">
                         <span className="price-label">Giá hiện tại</span>
-                        <span className="sale-price tnum">{item.price}</span>
+                        <span className="sale-price tnum">{item.currentPrice.toLocaleString('vi-VN')}đ</span>
                       </span>
                       <span className="countdown-wrap">
-                        <span className="countdown-time">{item.time}</span>
+                        <span className="countdown-time">{formatTime(item.endsAt)}</span>
                         <span className="price-label">Kết thúc sau</span>
                       </span>
                     </div>

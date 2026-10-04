@@ -10,13 +10,10 @@ export function MainLayout() {
 
   // Cập nhật thông tin user mỗi khi chuyển trang
  useEffect(() => {
-    const user = localDB.getCurrentUser();
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCurrentUser(prevUser => {
-      // Nếu user không đổi (cùng ID) thì bỏ qua, không render lại
-      if (prevUser?.id === user?.id) return prevUser;
-      return user;
-    });
+    const syncUser = () => setCurrentUser(localDB.getCurrentUser());
+    syncUser();
+    window.addEventListener('auctionhub:change', syncUser);
+    return () => window.removeEventListener('auctionhub:change', syncUser);
   }, [pathname]);
 
   // Xử lý tự động cuộn đến phần tử khi URL có Hash (#)
@@ -37,9 +34,9 @@ export function MainLayout() {
   // Điều hướng đến trang Profile
  const handleGoToProfile = () => {
   if (currentUser?.role === 'seller') {
-    navigate('/seller-profile');
+    navigate('/seller/dashboard');
   } else {
-    navigate('/buyer-profile'); // Bạn có thể tạo sau
+    navigate('/profile');
   }
 };
   // Đăng xuất
@@ -82,6 +79,7 @@ export function MainLayout() {
             
             {currentUser ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <Link className="nav-link" to="/notifications" aria-label="Thông báo">Thông báo</Link>
                 <div 
                   onClick={handleGoToProfile}
                   style={{ 
@@ -142,7 +140,11 @@ export function MainLayout() {
               <button className="nav-link" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }} style={{ color: 'var(--danger)', textAlign: 'left', border: 'none', background: 'none', font: 'inherit', padding: 0 }}>Đăng xuất</button>
             </>
           ) : (
-            <Link className="nav-link" to="/login" onClick={() => setIsMobileMenuOpen(false)}>Đăng nhập</Link>
+            <>
+              <Link className="nav-link" to="/login" onClick={() => setIsMobileMenuOpen(false)}>Đăng nhập</Link>
+              <Link className="nav-link" to="/register" onClick={() => setIsMobileMenuOpen(false)}>Đăng ký người mua</Link>
+              <Link className="nav-link" to="/register/seller" onClick={() => setIsMobileMenuOpen(false)}>Đăng ký người bán</Link>
+            </>
           )}
         </div>
       </header>
@@ -168,6 +170,7 @@ export function MainLayout() {
               <ul>
                 <li><Link to="/search">Phiên đang diễn ra</Link></li>
                 <li><Link to="/search">Đã kết thúc</Link></li>
+                <li><Link to="/register/seller">Trở thành người bán</Link></li>
               </ul>
             </nav>
             <nav className="footer-col" aria-label="Công ty">

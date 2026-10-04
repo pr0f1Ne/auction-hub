@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { localDB, LocalUser } from '../../../utils/localDB';
+import { MOCK_AUCTIONS } from '../../../data/mockData';
 
 // ── 1. ĐỊNH NGHĨA KIỂU DỮ LIỆU ĐỂ FIX LỖI "ANY" ──
 interface ProductImage {
@@ -32,7 +33,7 @@ interface BidRecord {
 }
 
 // ── 2. DỮ LIỆU MOCK ĐƯỢC CẬP NHẬT PHIÊN BẢN MỚI NHẤT VÀ ĐẦY ĐỦ 4 ẢNH THẬT ──
-const MOCK_DB: Record<string, ProductData> = {
+const LEGACY_MOCK_DB: Record<string, ProductData> = {
   '1': {
     id: '1',
     title: 'MacBook Pro 14 M5 2026',
@@ -115,10 +116,23 @@ const MOCK_DB: Record<string, ProductData> = {
   }
 };
 
+const MOCK_DB: Record<string, ProductData> = Object.fromEntries(localDB.getAuctions().map((auction) => [auction.id, {
+  id: auction.id,
+  title: auction.title,
+  price: auction.currentPrice,
+  views: auction.views,
+  bids: auction.bids.length,
+  timeLeft: Math.max(0, Math.floor((new Date(auction.endsAt).getTime() - Date.now()) / 1000)),
+  desc: [auction.description, ...auction.highlights],
+  images: auction.images.map((src, index) => ({ src, alt: `${auction.title} - ảnh ${index + 1}`, width: 1200, height: 900 }))
+}])) as Record<string, ProductData>;
+
+void LEGACY_MOCK_DB;
+
 // ── 3. WRAPPER COMPONENT (CHÌA KHÓA FIX CASCADING RENDER) ──
 export function AuctionDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const activeId = id && MOCK_DB[id] ? id : '1';
+  const activeId = id && MOCK_DB[id] ? id : MOCK_AUCTIONS[0].id;
   
   // Khi `key` thay đổi, React sẽ dọn dẹp Component cũ và khởi tạo Component mới tinh.
   // Qua đó reset toàn bộ `useState` mà không cần dùng `useEffect`, xóa bỏ 100% lỗi linter.
@@ -206,6 +220,8 @@ function AuctionDetailContent({ id }: { id: string }) {
     if (val < minBid) { setBidError(`Giá tối thiểu hiện tại là ${formatVND(minBid)}.`); return; }
     if ((val - minBid) % STEP !== 0) { setBidError(`Giá trả phải là bội số của ${formatVND(STEP)}.`); return; }
 
+    const result = localDB.placeBid(id, val);
+    if (!result.success) { setBidError(result.message ?? "Không thể đặt giá lúc này."); return; }
     setCurrentBid(val);
     setBidCount((prev: number) => prev + 1);
     setIsLeading(true);
@@ -219,9 +235,7 @@ function AuctionDetailContent({ id }: { id: string }) {
   };
 
   // Mảng Gợi ý Sản phẩm (bỏ qua id hiện tại)
-  const similarProducts = [
-    MOCK_DB['2'], MOCK_DB['3'], MOCK_DB['4'], MOCK_DB['1']
-  ].filter(p => p.id !== id).slice(0, 4);
+  const similarProducts = Object.values(MOCK_DB).filter((product) => product.id !== id).slice(0, 4);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

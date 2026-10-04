@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { localDB } from '../../utils/localDB';
 
-type OrderStatus = 'pending_payment' | 'shipping' | 'delivered' | 'dispute';
+type OrderStatus = 'pending_payment' | 'shipping' | 'delivered' | 'completed' | 'cancelled' | 'dispute';
 
 // 1. ĐƯA COMPONENT NÀY RA NGOÀI ĐỂ TRÁNH LỖI ESLINT
 const CheckIcon = () => (
@@ -12,7 +13,13 @@ const CheckIcon = () => (
 
 export default function OrderDetailPage() {
   const { id } = useParams();
-  const [status, setStatus] = useState<OrderStatus>('shipping');
+  const order = localDB.getOrder(id ?? 'ORD-142') ?? localDB.getOrders()[0];
+  const auction = localDB.getAuction(order.auctionId) ?? localDB.getAuctions()[0];
+  const initialStatus: OrderStatus = order.status === 'pending_payment' ? 'pending_payment' : order.status === 'completed' ? 'completed' : order.status === 'delivered' ? 'delivered' : order.status === 'cancelled' ? 'cancelled' : order.status === 'dispute' ? 'dispute' : 'shipping';
+  const [status, setStatus] = useState<OrderStatus>(initialStatus);
+  const [actionMessage, setActionMessage] = useState('');
+  const total = order.amount + order.platformFee + order.shippingFee;
+  const formatMoney = (value: number) => `${value.toLocaleString('vi-VN')}đ`;
 
   return (
     <main id="main">
@@ -25,6 +32,8 @@ export default function OrderDetailPage() {
             <option value="shipping">2. Đang giao hàng</option>
             <option value="delivered">3. Đã giao hàng</option>
             <option value="dispute">4. Có tranh chấp</option>
+            <option value="completed">5. Hoàn tất</option>
+            <option value="cancelled">6. Đã hủy</option>
           </select>
         </div>
 
@@ -44,6 +53,8 @@ export default function OrderDetailPage() {
                 {status === 'shipping' && <span className="status-pill st-ship"><span className="dot"></span>Đang giao hàng</span>}
                 {status === 'delivered' && <span className="status-pill st-done"><span className="dot"></span>Đã giao</span>}
                 {status === 'dispute' && <span className="status-pill st-dispute"><span className="dot"></span>Tranh chấp</span>}
+                {status === 'completed' && <span className="status-pill st-done"><span className="dot"></span>Hoàn tất</span>}
+                {status === 'cancelled' && <span className="status-pill st-cancelled"><span className="dot"></span>Đã hủy</span>}
               </div>
               <p className="order-sub">Đặt ngày 19/09/2026 {status === 'pending_payment' ? ', chưa thanh toán' : ', thanh toán 19/09/2026'}</p>
             </div>
@@ -59,15 +70,15 @@ export default function OrderDetailPage() {
 
             <section className="card">
               <div className="item-row">
-                <img className="item-thumb" src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=100" alt="MacBook" />
+                <img className="item-thumb" src={auction.images[0]} alt={auction.title} />
                 <div className="item-info">
                   <div className="item-title-line">
-                    <h2>MacBook Pro 14 M3 2023</h2>
+                    <h2>{auction.title}</h2>
                     <span className="cond-pill">Like New</span>
                   </div>
                   <p className="item-price">
                     <span className="price-label">Giá thắng</span>
-                    <span className="price tnum">36.500.000đ</span>
+                    <span className="price tnum">{formatMoney(order.amount)}</span>
                   </p>
                 </div>
               </div>
@@ -154,22 +165,22 @@ export default function OrderDetailPage() {
             <section className="card">
               <h2 className="card-title" style={{ fontSize: '16px', fontWeight: 600 }}>Tóm tắt đơn hàng</h2>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
-                <span>Giá thắng</span><strong className="tnum">36.500.000đ</strong>
+                <span>Giá thắng</span><strong className="tnum">{formatMoney(order.amount)}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
-                <span>Phí nền tảng (7%)</span><strong className="tnum">2.555.000đ</strong>
+                <span>Phí nền tảng (7%)</span><strong className="tnum">{formatMoney(order.platformFee)}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>
-                <span>Vận chuyển</span><strong className="tnum">50.000đ</strong>
+                <span>Vận chuyển</span><strong className="tnum">{formatMoney(order.shippingFee)}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '16px', fontSize: '18px', fontWeight: 700 }}>
-                <span>Tổng</span><span className="tnum">39.105.000đ</span>
+                <span>Tổng</span><span className="tnum">{formatMoney(total)}</span>
               </div>
             </section>
 
             <section className="card" style={{ gap: '12px' }}>
               {status === 'pending_payment' && (
-                <Link to={`/checkout/${id}`} className="btn btn-primary btn-lg" style={{ width: '100%' }}>Thanh toán ngay</Link>
+                <Link to={`/checkout/${order.auctionId}`} className="btn btn-primary btn-lg" style={{ width: '100%' }}>Thanh toán ngay</Link>
               )}
               
               {status === 'shipping' && (
@@ -177,18 +188,22 @@ export default function OrderDetailPage() {
               )}
 
               {status === 'delivered' && (
-                <button className="btn btn-primary btn-lg" style={{ width: '100%' }} onClick={() => alert('Escrow đã giải ngân cho Seller')}>Xác nhận đã nhận hàng</button>
+                <button className="btn btn-primary btn-lg" style={{ width: '100%' }} onClick={() => { localDB.updateOrder(order.id, { status: 'completed' }); setStatus('completed'); setActionMessage('Đã xác nhận nhận hàng. Tiền escrow sẽ được giải ngân cho người bán.'); }}>Xác nhận đã nhận hàng</button>
               )}
+
+              {status === 'completed' && <p className="body-sm" style={{ color: 'var(--success-text)' }}>Đơn hàng đã hoàn tất. Cảm ơn bạn đã giao dịch.</p>}
+              {status === 'cancelled' && <p className="body-sm" style={{ color: 'var(--muted)' }}>Đơn hàng đã được hủy.</p>}
 
               {status === 'dispute' && (
                 <button className="btn btn-primary btn-lg" style={{ width: '100%' }}>Xem chi tiết tranh chấp</button>
               )}
 
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
-                {status !== 'dispute' && <button className="btn btn-ghost" style={{ color: 'var(--danger-text)', padding: 0, height: 'auto', minHeight: 'auto' }}>{status === 'pending_payment' ? 'Hủy đơn' : 'Mở tranh chấp'}</button>}
-                {status === 'dispute' && <button className="btn btn-ghost" style={{ color: 'var(--accent)', padding: 0, height: 'auto', minHeight: 'auto' }}>Bổ sung bằng chứng</button>}
-                <button className="btn btn-ghost" style={{ padding: 0, height: 'auto', minHeight: 'auto' }}>Liên hệ người bán</button>
+                {!['dispute', 'completed', 'cancelled'].includes(status) && <button className="btn btn-ghost" onClick={() => { const next = status === 'pending_payment' ? 'cancelled' : 'dispute'; localDB.updateOrder(order.id, { status: next }); setStatus(next); setActionMessage(next === 'cancelled' ? 'Đơn hàng đã được hủy.' : 'Đã mở tranh chấp. Admin sẽ phản hồi trong 24 giờ.'); }} style={{ color: 'var(--danger-text)', padding: 0, height: 'auto', minHeight: 'auto' }}>{status === 'pending_payment' ? 'Hủy đơn' : 'Mở tranh chấp'}</button>}
+                {status === 'dispute' && <button className="btn btn-ghost" onClick={() => setActionMessage('Khu vực tải bằng chứng đã được mở.')} style={{ color: 'var(--accent)', padding: 0, height: 'auto', minHeight: 'auto' }}>Bổ sung bằng chứng</button>}
+                <button className="btn btn-ghost" onClick={() => setActionMessage('Đã gửi yêu cầu liên hệ tới người bán.')} style={{ padding: 0, height: 'auto', minHeight: 'auto' }}>Liên hệ người bán</button>
               </div>
+              {actionMessage && <p className="body-sm" role="status" style={{ marginTop: 12, color: 'var(--accent)' }}>{actionMessage}</p>}
             </section>
           </aside>
         </div>

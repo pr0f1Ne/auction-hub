@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { localDB } from '../../utils/localDB';
+import type { AuctionCategory, AuctionCondition } from '../../data/mockData';
 
 export default function SellerNewAuctionPage() {
   const navigate = useNavigate();
@@ -8,14 +10,38 @@ export default function SellerNewAuctionPage() {
   // States cho Form
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
+  const [brand, setBrand] = useState('Apple');
+  const [category, setCategory] = useState<AuctionCategory>('laptop');
+  const [condition, setCondition] = useState<AuctionCondition>('like-new');
+  const [description, setDescription] = useState('');
+  const [minIncrement, setMinIncrement] = useState('500.000');
+  const [endsAt, setEndsAt] = useState('');
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [agreed, setAgreed] = useState(false);
+  const [error, setError] = useState('');
 
   const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, 3));
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
   const handleSubmit = () => {
-    // Gọi API lưu dữ liệu ở đây
-    alert('Đã gửi duyệt thành công!');
-    navigate('/seller/dashboard'); // Quay về dashboard sau khi gửi
+    const startingPrice = Number(price.replace(/\D/g, ''));
+    const increment = Number(minIncrement.replace(/\D/g, ''));
+    if (!title.trim() || !startingPrice || !increment || !endsAt || !agreed) {
+      setError('Vui lòng hoàn tất các trường bắt buộc và xác nhận cam kết.');
+      return;
+    }
+    localDB.createAuction({
+      title: title.trim(), brand, category, condition, description: description.trim(),
+      images: imagePreviews.length > 0 ? imagePreviews : ['https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=1400&q=90'],
+      startingPrice, minIncrement: increment, endsAt: new Date(endsAt).toISOString()
+    });
+    navigate('/seller/auctions');
+  };
+
+  const handleImages = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []).slice(0, 5);
+    imagePreviews.forEach((url) => { if (url.startsWith('blob:')) URL.revokeObjectURL(url); });
+    setImagePreviews(files.map((file) => URL.createObjectURL(file)));
   };
 
   return (
@@ -64,32 +90,38 @@ export default function SellerNewAuctionPage() {
 
               <div className="form-grid-2">
                 <div className="field">
+                  <label htmlFor="brand">Hãng</label>
+                  <input className="control" id="brand" value={brand} onChange={(event) => setBrand(event.target.value)} />
+                </div>
+                <div className="field">
                   <label htmlFor="category">Danh mục</label>
-                  <select className="control" id="category">
+                  <select className="control" id="category" value={category} onChange={(event) => setCategory(event.target.value as AuctionCategory)}>
                     <option value="laptop">Laptop</option>
-                    <option value="dien-thoai">Điện thoại</option>
+                    <option value="phone">Điện thoại</option><option value="tablet">Tablet</option><option value="audio">Âm thanh</option><option value="camera">Máy ảnh / Flycam</option><option value="gaming">Gaming</option><option value="fashion">Thời trang</option><option value="beauty">Mỹ phẩm</option><option value="fitness">Đồ tập gym</option>
                   </select>
                 </div>
                 <div className="field">
                   <label htmlFor="condition">Tình trạng</label>
-                  <select className="control" id="condition">
+                  <select className="control" id="condition" value={condition} onChange={(event) => setCondition(event.target.value as AuctionCondition)}>
                     <option value="like-new">Like New</option>
-                    <option value="moi">Mới</option>
+                    <option value="new">Mới</option><option value="used">Đã qua sử dụng</option>
                   </select>
                 </div>
               </div>
 
               <div className="field">
                 <label>Ảnh sản phẩm</label>
-                <div className="upload-zone">
+                <label className="upload-zone" htmlFor="product-images">
                   <span className="up-title">Kéo thả ảnh hoặc click để chọn</span>
                   <span className="up-sub">Tối đa 5 ảnh, mỗi ảnh ≤ 5MB</span>
-                </div>
+                  <input id="product-images" type="file" accept="image/*" multiple hidden onChange={handleImages} />
+                </label>
+                {imagePreviews.length > 0 && <div className="upload-preview">{imagePreviews.map((src, index) => <img key={src} src={src} alt={`Ảnh xem trước ${index + 1}`} />)}</div>}
               </div>
 
               <div className="field">
                 <label htmlFor="desc">Mô tả</label>
-                <textarea className="control" id="desc" placeholder="Mô tả tình trạng thật, phụ kiện kèm theo..."></textarea>
+                <textarea className="control" id="desc" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Mô tả tình trạng thật, phụ kiện kèm theo..."></textarea>
               </div>
             </div>
           </section>
@@ -117,8 +149,12 @@ export default function SellerNewAuctionPage() {
                 </div>
               </div>
               <div className="field">
+                <label htmlFor="increment">Bước giá (VNĐ)</label>
+                <input className="control" id="increment" value={minIncrement} onChange={(event) => setMinIncrement(event.target.value.replace(/\D/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.'))} />
+              </div>
+              <div className="field">
                 <label htmlFor="end-datetime">Thời gian kết thúc</label>
-                <input className="control" type="datetime-local" id="end-datetime" />
+                <input className="control" type="datetime-local" id="end-datetime" value={endsAt} onChange={(event) => setEndsAt(event.target.value)} />
               </div>
             </div>
           </section>
@@ -135,10 +171,11 @@ export default function SellerNewAuctionPage() {
             </ul>
             <div style={{ marginTop: '24px' }}>
               <label style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <input type="checkbox" style={{ width: '18px', height: '18px' }} />
+                <input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} style={{ width: '18px', height: '18px' }} />
                 <span>Tôi cam kết thông tin trên là chính xác và có quyền bán sản phẩm này.</span>
               </label>
             </div>
+            {error && <p className="form-error" role="alert">{error}</p>}
           </section>
         )}
       </div>

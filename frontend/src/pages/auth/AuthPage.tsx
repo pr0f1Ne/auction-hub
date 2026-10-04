@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { localDB } from "../../utils/localDB"; // Nhớ kiểm tra đường dẫn import này cho đúng
 
 const SLIDE_IMAGES = [
@@ -11,10 +11,13 @@ const SLIDE_IMAGES = [
 
 export function AuthPage() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
 
   const [isSuccess, setIsSuccess] = useState(false);
   const view = isSuccess
     ? "success"
+    : pathname.includes("forgot-password")
+      ? "forgot"
     : pathname.includes("register")
       ? "register"
       : "login";
@@ -33,9 +36,13 @@ export function AuthPage() {
   const [termsError, setTermsError] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginError, setLoginError] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const [slideIndex, setSlideIndex] = useState(0);
-  const [role, setRole] = useState<"buyer" | "seller">("buyer");
+  const [role, setRole] = useState<"buyer" | "seller">(() => pathname.includes("seller") ? "seller" : "buyer");
+  const [phone, setPhone] = useState("");
+  const [city, setCity] = useState("TP.HCM");
+  const [businessType, setBusinessType] = useState<"individual" | "business">("individual");
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -69,6 +76,7 @@ export function AuthPage() {
     e.preventDefault();
     setNameError(false);
     setTermsError(false);
+    setSubmitError("");
     if (!name.trim()) {
       setNameError(true);
       return;
@@ -77,19 +85,31 @@ export function AuthPage() {
       setTermsError(true);
       return;
     }
-    if (emailStatus !== "ok" || pwdScore < 2) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      setEmailStatus("error");
+      setEmailMsg("Email không hợp lệ.");
+      return;
+    }
+    if (pwdScore < 2) {
+      setSubmitError("Mật khẩu cần ít nhất 8 ký tự và kết hợp chữ hoa, chữ thường hoặc số.");
+      return;
+    }
+    if (role === "seller" && (!/^0\d{9}$/.test(phone.replace(/\s/g, "")) || !city)) {
+      setSubmitError("Vui lòng nhập số điện thoại 10 chữ số và khu vực hoạt động của cửa hàng.");
+      return;
+    }
 
     setIsSubmitting(true);
 
     // Truyền thêm role vào DB
-    const res = localDB.register(email, password, name, role);
+    const res = localDB.register(email, password, name, role, role === "seller" ? { phone: phone.replace(/\s/g, ""), city, businessType } : undefined);
 
     setTimeout(() => {
       setIsSubmitting(false);
       if (res.success) {
         setIsSuccess(true);
         setTimeout(() => {
-          window.location.href = "/";
+          navigate(role === "seller" ? "/seller/dashboard" : "/profile", { replace: true });
         }, 1500);
       } else {
         setEmailStatus("error");
@@ -97,58 +117,6 @@ export function AuthPage() {
       }
     }, 800);
   };
-  // 3. Chèn khối chọn Role này vào form Đăng ký (đặt ngay trên ô nhập Email)
-  <div className="field" style={{ marginBottom: 20 }}>
-    <label
-      style={{
-        display: "block",
-        marginBottom: 10,
-        fontSize: 14,
-        fontWeight: 500,
-      }}
-    >
-      Loại tài khoản
-    </label>
-    <div style={{ display: "flex", gap: "16px" }}>
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          cursor: "pointer",
-          fontSize: 14,
-        }}
-      >
-        <input
-          type="radio"
-          name="role"
-          checked={role === "buyer"}
-          onChange={() => setRole("buyer")}
-          style={{ accentColor: "var(--accent)" }}
-        />
-        Người mua
-      </label>
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          cursor: "pointer",
-          fontSize: 14,
-        }}
-      >
-        <input
-          type="radio"
-          name="role"
-          checked={role === "seller"}
-          onChange={() => setRole("seller")}
-          style={{ accentColor: "var(--accent)" }}
-        />
-        Người bán
-      </label>
-    </div>
-  </div>;
-
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -166,6 +134,16 @@ export function AuthPage() {
     } else {
       setLoginError(true);
     }
+  };
+
+  const handleForgotPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitError("");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      setSubmitError("Vui lòng nhập email hợp lệ.");
+      return;
+    }
+    setIsSuccess(true);
   };
 
   return (
@@ -258,6 +236,20 @@ export function AuthPage() {
                 </svg>
                 <span>1.240 người bán đã xác minh</span>
               </div>
+
+              <fieldset className="account-type" disabled={isSubmitting}>
+                <legend>Loại tài khoản</legend>
+                <label className={role === "buyer" ? "is-selected" : ""}>
+                  <input type="radio" name="role" value="buyer" checked={role === "buyer"} onChange={() => setRole("buyer")} />
+                  <span className="account-type-icon" aria-hidden="true">◎</span>
+                  <span><strong>Người mua</strong><small>Tham gia đấu giá và theo dõi sản phẩm</small></span>
+                </label>
+                <label className={role === "seller" ? "is-selected" : ""}>
+                  <input type="radio" name="role" value="seller" checked={role === "seller"} onChange={() => setRole("seller")} />
+                  <span className="account-type-icon" aria-hidden="true">▣</span>
+                  <span><strong>Người bán</strong><small>Đăng sản phẩm và quản lý đơn hàng</small></span>
+                </label>
+              </fieldset>
 
               <div
                 className="social-row"
@@ -536,7 +528,7 @@ export function AuthPage() {
                     fontWeight: 500,
                   }}
                 >
-                  Họ và tên
+                  {role === "seller" ? "Tên cửa hàng" : "Họ và tên"}
                 </label>
                 <div
                   className={`input-wrap has-lead ${nameError ? "has-error" : ""}`}
@@ -567,7 +559,7 @@ export function AuthPage() {
                       setNameError(false);
                     }}
                     type="text"
-                    placeholder="Nguyễn Văn A"
+                    placeholder={role === "seller" ? "Ví dụ: TechStore VN" : "Nguyễn Văn A"}
                     disabled={isSubmitting}
                     style={{
                       width: "100%",
@@ -591,6 +583,26 @@ export function AuthPage() {
                   </p>
                 )}
               </div>
+
+              {role === "seller" && (
+                <div className="seller-register-fields">
+                  <div className="field">
+                    <label htmlFor="seller-phone">Số điện thoại</label>
+                    <input className="auth-control" id="seller-phone" type="tel" inputMode="numeric" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="0901 234 567" disabled={isSubmitting} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="seller-city">Khu vực hoạt động</label>
+                    <select className="auth-control" id="seller-city" value={city} onChange={(event) => setCity(event.target.value)} disabled={isSubmitting}>
+                      <option>TP.HCM</option><option>Hà Nội</option><option>Đà Nẵng</option><option>Cần Thơ</option><option>Hải Phòng</option>
+                    </select>
+                  </div>
+                  <div className="field seller-business-type">
+                    <span>Hình thức kinh doanh</span>
+                    <label><input type="radio" name="businessType" checked={businessType === "individual"} onChange={() => setBusinessType("individual")} /> Cá nhân</label>
+                    <label><input type="radio" name="businessType" checked={businessType === "business"} onChange={() => setBusinessType("business")} /> Doanh nghiệp</label>
+                  </div>
+                </div>
+              )}
 
               <div className="field" style={{ marginBottom: 24 }}>
                 <label
@@ -647,6 +659,8 @@ export function AuthPage() {
                 )}
               </button>
 
+              {submitError && <p className="auth-submit-error" role="alert">{submitError}</p>}
+
               <p className="switch-line">
                 Đã có tài khoản?{" "}
                 <Link
@@ -657,6 +671,22 @@ export function AuthPage() {
                   Đăng nhập
                 </Link>
               </p>
+            </form>
+          )}
+
+          {view === "forgot" && (
+            <form onSubmit={handleForgotPassword}>
+              <div className="form-head" style={{ marginBottom: 28 }}>
+                <h1 style={{ fontSize: 32, fontWeight: 300, margin: 0 }}>Khôi phục mật khẩu</h1>
+                <p style={{ color: "var(--muted)", marginTop: 8 }}>Nhập email tài khoản. Trong bản frontend, yêu cầu sẽ được xác nhận ngay trên thiết bị này.</p>
+              </div>
+              <div className="field" style={{ marginBottom: 20 }}>
+                <label htmlFor="forgot-email" style={{ display: "block", marginBottom: 6, fontSize: 14, fontWeight: 500 }}>Email</label>
+                <input id="forgot-email" className="auth-control" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="ban@email.com" />
+              </div>
+              <button className="btn-primary btn-lg" type="submit" style={{ width: "100%" }}>Gửi yêu cầu khôi phục</button>
+              {submitError && <p className="auth-submit-error" role="alert">{submitError}</p>}
+              <p className="switch-line"><Link className="switch-btn" to="/login">Quay lại đăng nhập</Link></p>
             </form>
           )}
 
@@ -747,8 +777,8 @@ export function AuthPage() {
                   <label style={{ fontSize: 14, fontWeight: 500 }}>
                     Mật khẩu
                   </label>
-                  <a
-                    href="#forgot"
+                  <Link
+                    to="/forgot-password"
                     style={{
                       fontSize: 13,
                       color: "var(--accent)",
@@ -756,7 +786,7 @@ export function AuthPage() {
                     }}
                   >
                     Quên mật khẩu?
-                  </a>
+                  </Link>
                 </div>
                 <div
                   className={`input-wrap has-lead has-toggle ${loginError ? "has-error" : ""}`}
@@ -930,10 +960,12 @@ export function AuthPage() {
               >
                 {pathname.includes("register")
                   ? "Tài khoản đã được tạo"
+                  : pathname.includes("forgot-password")
+                    ? "Đã ghi nhận yêu cầu"
                   : "Đăng nhập thành công"}
               </h1>
               <p style={{ color: "var(--muted)" }}>
-                Đang chuyển bạn về trang chủ...
+                {pathname.includes("forgot-password") ? "Bạn có thể quay lại đăng nhập và tiếp tục sử dụng tài khoản." : "Đang chuyển bạn đến trang phù hợp..."}
               </p>
             </div>
           )}

@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function AdminDashboardPage() {
+  const [pendingVisible, setPendingVisible] = useState(true);
+  const [disputeResolved, setDisputeResolved] = useState(false);
+  const [notice, setNotice] = useState('');
   return (
     <div className="content">
       <div className="page-head">
@@ -9,6 +12,7 @@ export default function AdminDashboardPage() {
           <p className="sub">Thứ Bảy, 19/09/2026. Có <strong className="tnum">5</strong> phiên chờ duyệt và <strong className="tnum">3</strong> tranh chấp đang mở.</p>
         </div>
       </div>
+      {notice && <div className="card" role="status" style={{ marginBottom: 16, padding: 14, color: 'var(--accent)' }}>{notice}</div>}
 
       <div className="kpi-grid">
         <div className="kpi kpi-lavender">
@@ -41,7 +45,7 @@ export default function AdminDashboardPage() {
               <tr><th>Sản phẩm</th><th>Người bán</th><th>Giá khởi điểm</th><th>Ngày tạo</th><th>Thao tác</th></tr>
             </thead>
             <tbody>
-              <tr>
+              {pendingVisible ? <tr>
                 <td>
                   <div className="prod">
                     <span className="thumb"><img src="/images/headphones.jpg" alt="" /></span>
@@ -53,11 +57,11 @@ export default function AdminDashboardPage() {
                 <td><span style={{ color: 'var(--muted)' }}>19/09 · 09:12</span></td>
                 <td>
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    <button style={{ border: 'none', background: 'none', color: 'var(--success-text)', fontWeight: 600, cursor: 'pointer' }}>Duyệt</button>
-                    <button style={{ border: 'none', background: 'none', color: 'var(--danger-text)', fontWeight: 600, cursor: 'pointer' }}>Từ chối</button>
+                    <button onClick={() => { setPendingVisible(false); setNotice('Đã duyệt phiên Sony WH-1000XM5.'); }} style={{ border: 'none', background: 'none', color: 'var(--success-text)', fontWeight: 600, cursor: 'pointer' }}>Duyệt</button>
+                    <button onClick={() => { setPendingVisible(false); setNotice('Đã từ chối phiên Sony WH-1000XM5 và gửi lý do cho người bán.'); }} style={{ border: 'none', background: 'none', color: 'var(--danger-text)', fontWeight: 600, cursor: 'pointer' }}>Từ chối</button>
                   </div>
                 </td>
-              </tr>
+              </tr> : <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--muted)' }}>Không còn phiên chờ duyệt.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -73,13 +77,14 @@ export default function AdminDashboardPage() {
               <tr><th>Phiên</th><th>Người mua</th><th>Người bán</th><th>Trạng thái</th><th>Thao tác</th></tr>
             </thead>
             <tbody>
-              <tr style={{ borderLeft: '3px solid var(--danger)' }}>
+              {!disputeResolved ? <tr style={{ borderLeft: '3px solid var(--danger)' }}>
                 <td><span className="pname" style={{ fontWeight: 500, color: 'var(--fg)' }}>MacBook Pro 14 M3</span><br/><small style={{ color: 'var(--muted)' }}>#DS-301</small></td>
                 <td>Nguyễn Văn A</td>
                 <td>TechStore VN</td>
                 <td><span className="status-pill st-pay" style={{ padding: '2px 8px', fontSize: '12px' }}><span className="dot"></span>Đang mở</span></td>
-                <td><button className="btn btn-primary" style={{ height: '32px', fontSize: '12px', padding: '0 12px' }}>Giải quyết</button></td>
+                <td><button onClick={() => { setDisputeResolved(true); setNotice('Tranh chấp #DS-301 đã được đánh dấu hoàn tất.'); }} className="btn btn-primary" style={{ height: '32px', fontSize: '12px', padding: '0 12px' }}>Giải quyết</button></td>
               </tr>
+              : <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--muted)' }}>Không còn tranh chấp mở.</td></tr>}
             </tbody>
           </table>
         </section>

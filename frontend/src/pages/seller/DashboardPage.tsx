@@ -1,7 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { localDB } from '../../utils/localDB';
 
 export default function SellerDashboardPage() {
+  const auctions = localDB.getAuctions();
+  const activeAuctions = auctions.filter((item) => item.status === 'active');
   return (
     <div className="content">
       <div className="page-head">
@@ -23,7 +26,7 @@ export default function SellerDashboardPage() {
         </div>
         <div className="kpi kpi-sky">
           <div className="label">Phiên đang hoạt động</div>
-          <div className="value">8</div>
+          <div className="value">{activeAuctions.length}</div>
         </div>
         <div className="kpi kpi-mint">
           <div className="label">Tỷ lệ thắng</div>
@@ -51,14 +54,16 @@ export default function SellerDashboardPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                      <img src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=100" width="48" height="48" style={{ borderRadius: "6px" }} alt="" />
-                      <span>MacBook Pro 14 M3 2023<br/><small style={{ color: "var(--muted)" }}>#AU-1042</small></span>
-                    </td>
-                    <td><strong style={{ color: "var(--fg)" }}>35.500.000đ</strong></td>
-                    <td><span style={{ color: "var(--color-live-text)", background: "var(--surface-mint)", padding: "4px 8px", borderRadius: "999px", fontSize: "12px", fontWeight: 500 }}>Đang hoạt động</span></td>
-                  </tr>
+                  {auctions.slice(0, 5).map((auction) => (
+                    <tr key={auction.id}>
+                      <td style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                        <img src={auction.images[0]} width="48" height="48" style={{ borderRadius: "6px", objectFit: "cover" }} alt="" />
+                        <span>{auction.title}<br/><small style={{ color: "var(--muted)" }}>#{auction.id}</small></span>
+                      </td>
+                      <td><strong style={{ color: "var(--fg)" }}>{auction.currentPrice.toLocaleString('vi-VN')}đ</strong></td>
+                      <td><span style={{ color: auction.status === 'active' ? "var(--success-text)" : "var(--amber-text)", background: auction.status === 'active' ? "var(--surface-mint)" : "var(--amber-bg)", padding: "4px 8px", borderRadius: "999px", fontSize: "12px", fontWeight: 500 }}>{auction.status === 'active' ? 'Đang hoạt động' : 'Chờ duyệt'}</span></td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

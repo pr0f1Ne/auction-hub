@@ -1,16 +1,35 @@
-import { NavLink, Outlet, Link } from 'react-router-dom';
+import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
+import { localDB } from '../utils/localDB';
 
 export function DashboardLayout() {
+  const { pathname } = useLocation();
+  const isAdmin = pathname.startsWith('/admin');
+  const currentUser = localDB.getCurrentUser();
+  const displayName = isAdmin ? 'Quản trị viên' : (currentUser?.name || 'TechStore VN');
+  const initials = displayName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+
   return (
     <div className="app">
       {/* ─── Sidebar ─── */}
-      <aside className="sidebar" aria-label="Điều hướng người bán">
+      <aside className="sidebar" aria-label={isAdmin ? 'Điều hướng quản trị' : 'Điều hướng người bán'}>
         <Link className="side-brand" to="/">
           <span className="mark" aria-hidden="true">A</span>
           AuctionHub
         </Link>
 
         <nav className="side-nav" aria-label="Menu chính">
+          {isAdmin ? (
+            <>
+              <NavLink to="/admin/dashboard" className={({ isActive }) => isActive ? "active" : ""}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
+                Trung tâm duyệt
+              </NavLink>
+              <Link to="/search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></svg>
+                Xem sàn đấu giá
+              </Link>
+            </>
+          ) : <>
           <NavLink to="/seller/dashboard" className={({ isActive }) => isActive ? "active" : ""}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <rect x="3" y="3" width="7" height="7" rx="1.5" />
@@ -40,13 +59,18 @@ export function DashboardLayout() {
             Đơn hàng
             <span className="count" id="nav-order-count">2</span>
           </NavLink>
+          <Link to="/seller-profile">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
+            Hồ sơ cửa hàng
+          </Link>
+          </>}
         </nav>
 
         <div className="side-user">
-          <span className="avatar" aria-hidden="true">TV</span>
+          <span className="avatar" aria-hidden="true">{initials}</span>
           <div className="usermeta">
-            <b>TechStore VN</b>
-            <span className="badge">Seller</span>
+            <b>{displayName}</b>
+            <span className="badge">{isAdmin ? 'Admin' : 'Seller'}</span>
           </div>
         </div>
       </aside>

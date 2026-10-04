@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { localDB } from '../../utils/localDB';
 
 export default function CheckoutPage() {
-  const { auctionId } = useParams(); // Lấy ID phiên đấu giá từ URL
+  const { auctionId = '' } = useParams();
+  const auction = localDB.getAuction(auctionId) ?? localDB.getAuctions()[0];
+  const order = localDB.getOrders().find((item) => item.auctionId === auction.id) ?? localDB.createOrder(auction.id);
+  const total = order.amount + order.platformFee + order.shippingFee;
+  const formatMoney = (value: number) => `${value.toLocaleString('vi-VN')}đ`;
   
   // States điều khiển giao diện
   const [addressType, setAddressType] = useState<'saved' | 'new'>('saved');
   const [paymentMethod, setPaymentMethod] = useState<'vnpay' | 'momo' | 'bank'>('momo');
   const [status, setStatus] = useState<'idle' | 'processing' | 'success' | 'failed'>('idle');
   const [timeLeft, setTimeLeft] = useState(85512); // Tương đương ~23h:45m
+  const [newAddress, setNewAddress] = useState({ name: '', phone: '', city: '', district: '', detail: '' });
+  const [addressError, setAddressError] = useState('');
 
   // Xử lý đếm ngược thanh toán
   useEffect(() => {
@@ -32,13 +39,19 @@ export default function CheckoutPage() {
 
   // Giả lập quá trình thanh toán (Gọi API)
   const handlePaymentSubmit = () => {
+    if (addressType === 'new') {
+      const valid = newAddress.name.trim() && /^0\d{9}$/.test(newAddress.phone.replace(/\s/g, '')) && newAddress.city.trim() && newAddress.district.trim() && newAddress.detail.trim();
+      if (!valid) { setAddressError('Vui lòng điền đủ họ tên, số điện thoại 10 chữ số và địa chỉ giao hàng.'); return; }
+    }
+    setAddressError('');
     setStatus('processing');
     
-    // Giả lập delay API 2 giây, sau đó random ra thành công hoặc thất bại
+    // Mô phỏng cổng thanh toán ở client và ghi trạng thái escrow vào localStorage.
     setTimeout(() => {
-      const isSuccess = Math.random() > 0.3; // 70% thành công
-      setStatus(isSuccess ? 'success' : 'failed');
-    }, 2000);
+      const address = addressType === 'saved' ? '123 Lê Lợi, Phường Sài Gòn, TP.HCM' : `${newAddress.name.trim()} · ${newAddress.phone.trim()} · ${newAddress.detail.trim()}, ${newAddress.district.trim()}, ${newAddress.city.trim()}`;
+      localDB.updateOrder(order.id, { status: 'paid', paymentMethod, shippingAddress: address });
+      setStatus('success');
+    }, 900);
   };
 
   // 1. MÀN HÌNH THÀNH CÔNG (Tách từ order-success.html)
@@ -60,13 +73,13 @@ export default function CheckoutPage() {
             </span>
             <div style={{ marginTop: '16px' }}>
               <h1 style={{ fontSize: '28px', fontWeight: 500 }}>Thanh toán thành công</h1>
-              <p style={{ marginTop: '8px', color: 'var(--muted)' }}>Đơn hàng #ORD-142 · 19/09/2026 15:12</p>
+              <p style={{ marginTop: '8px', color: 'var(--muted)' }}>Đơn hàng #{order.id} · {new Date(order.createdAt).toLocaleString('vi-VN')}</p>
             </div>
 
             <div style={{ textAlign: 'left', display: 'grid', gap: '16px', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', paddingBlock: '20px', marginTop: '20px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr', gap: '16px', alignItems: 'center' }}>
-                <img src="/images/laptop.jpg" alt="MacBook" style={{ width: '64px', height: '64px', borderRadius: '6px', objectFit: 'cover' }} />
-                <h2 style={{ fontSize: '18px', fontWeight: 500 }}>MacBook Pro 14 M3 2023</h2>
+                <img src={auction.images[0]} alt={auction.title} style={{ width: '64px', height: '64px', borderRadius: '6px', objectFit: 'cover' }} />
+                <h2 style={{ fontSize: '18px', fontWeight: 500 }}>{auction.title}</h2>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
                 <span style={{ color: 'var(--fg-2)' }}>Người bán</span><strong>TechStore VN</strong>
@@ -75,12 +88,12 @@ export default function CheckoutPage() {
                 <span style={{ color: 'var(--fg-2)' }}>Phương thức</span><strong>{paymentMethod.toUpperCase()}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '20px', fontWeight: 700 }}>
-                <span>Tổng</span><span>39.105.000đ</span>
+                <span>Tổng</span><span>{formatMoney(total)}</span>
               </div>
             </div>
 
             <div style={{ marginTop: '24px', display: 'flex', gap: '12px', justifyContent: 'center' }}>
-              <button className="btn btn-primary" onClick={() => alert('Chuyển hướng đến Đơn hàng của tôi')}>Xem đơn hàng</button>
+              <Link className="btn btn-primary" to={`/orders/${order.id}`}>Xem đơn hàng</Link>
               <Link to="/" className="btn btn-ghost">Về trang chủ</Link>
             </div>
           </section>
@@ -114,7 +127,7 @@ export default function CheckoutPage() {
             <div className="card" style={{ padding: '20px', background: '#fff', border: '1px solid var(--border)', borderRadius: '8px' }}>
               <h1 style={{ fontSize: '24px', fontWeight: 500, margin: 0 }}>Thanh toán đơn hàng</h1>
               <p style={{ fontSize: '14px', color: 'var(--muted)', marginTop: '8px' }}>
-                Đơn hàng <strong>#ORD-142</strong> · Vui lòng thanh toán trong <strong style={{ color: 'var(--urgent)' }}>{formatTime(timeLeft)}</strong>
+                Đơn hàng <strong>#{order.id}</strong> · Vui lòng thanh toán trong <strong style={{ color: 'var(--urgent)' }}>{formatTime(timeLeft)}</strong>
               </p>
             </div>
 
@@ -142,13 +155,14 @@ export default function CheckoutPage() {
               {/* Form địa chỉ mới (Ẩn/Hiện dựa vào state) */}
               {addressType === 'new' && (
                 <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <input type="text" placeholder="Họ và tên" style={{ padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }} />
-                  <input type="tel" placeholder="Số điện thoại" style={{ padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }} />
-                  <input type="text" placeholder="Tỉnh/Thành phố" style={{ padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }} />
-                  <input type="text" placeholder="Quận/Huyện" style={{ padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }} />
-                  <input type="text" placeholder="Địa chỉ cụ thể" style={{ gridColumn: '1 / -1', padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }} />
+                  <input value={newAddress.name} onChange={(e) => setNewAddress({ ...newAddress, name: e.target.value })} type="text" placeholder="Họ và tên" style={{ padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }} />
+                  <input value={newAddress.phone} onChange={(e) => setNewAddress({ ...newAddress, phone: e.target.value })} type="tel" placeholder="Số điện thoại" style={{ padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }} />
+                  <input value={newAddress.city} onChange={(e) => setNewAddress({ ...newAddress, city: e.target.value })} type="text" placeholder="Tỉnh/Thành phố" style={{ padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }} />
+                  <input value={newAddress.district} onChange={(e) => setNewAddress({ ...newAddress, district: e.target.value })} type="text" placeholder="Quận/Huyện" style={{ padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }} />
+                  <input value={newAddress.detail} onChange={(e) => setNewAddress({ ...newAddress, detail: e.target.value })} type="text" placeholder="Địa chỉ cụ thể" style={{ gridColumn: '1 / -1', padding: '10px', borderRadius: '6px', border: '1px solid var(--border)' }} />
                 </div>
               )}
+              {addressError && <p className="form-error" role="alert">{addressError}</p>}
             </section>
 
             {/* Khối Thanh toán */}
@@ -204,8 +218,8 @@ export default function CheckoutPage() {
                     <button className="link-btn" style={{ color: 'var(--accent)', cursor: 'pointer', border: 'none', background: 'none' }} onClick={() => copyToClipboard('123456789012')}>Sao chép</button>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0' }}>
-                    <span>Nội dung: <strong>ORD-142</strong></span>
-                    <button className="link-btn" style={{ color: 'var(--accent)', cursor: 'pointer', border: 'none', background: 'none' }} onClick={() => copyToClipboard('ORD-142')}>Sao chép</button>
+                    <span>Nội dung: <strong>{order.id}</strong></span>
+                    <button className="link-btn" style={{ color: 'var(--accent)', cursor: 'pointer', border: 'none', background: 'none' }} onClick={() => copyToClipboard(order.id)}>Sao chép</button>
                   </div>
                 </div>
               )}
@@ -217,7 +231,7 @@ export default function CheckoutPage() {
             <section className="card" style={{ padding: '20px', background: '#fff', border: '1px solid var(--border)', borderRadius: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', fontWeight: 600 }}>
                 <span>Tổng thanh toán</span>
-                <span style={{ fontSize: '24px' }}>39.105.000đ</span>
+                <span style={{ fontSize: '24px' }}>{formatMoney(total)}</span>
               </div>
               <button 
                 className="btn btn-primary" 
