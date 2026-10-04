@@ -1,0 +1,13 @@
+[build]
+  command = "npm ci --prefix frontend && npm run build --prefix frontend"
+  publish = "frontend/dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# React Router handles these paths in the browser. Without this fallback, a
+# direct visit to /profile, /search, or any other SPA route returns Netlify 404.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

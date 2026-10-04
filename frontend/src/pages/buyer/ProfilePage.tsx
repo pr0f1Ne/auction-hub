@@ -206,7 +206,7 @@ export default function BuyerProfilePage() {
                   <svg className="ic-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" style={{ width: 16, height: 16 }}><path d="M6 6l12 12M18 6L6 18" /></svg>
                 </button>
                 <Link className="profile-product-media" to={`/auctions/${auction.id}`}>
-                  <img src={auction.image} alt={auction.title} />
+                  <img src={auction.images[0]} alt={auction.title} />
                   {new Date(auction.endsAt).getTime() - now < 86400000 && <span className="profile-product-badge">Sắp kết thúc</span>}
                 </Link>
                 <div className="profile-product-body">
